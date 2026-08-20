@@ -1,0 +1,72 @@
+﻿version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: expense_mongo
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: expense_tracker
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Khởi tạo replica set 1 node (bắt buộc để dùng MongoDB ACID session/transaction)
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      bash -c "
+      mongosh --host mongo:27017 --eval '
+        try { rs.status(); }
+        catch (e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongo:27017\" }] }); }
+      '
+      "
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: expense_server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/expense_tracker?replicaSet=rs0
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./server/src:/app/src
+    command: npm run dev
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: expense_client
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    volumes:
+      - ./client/src:/app/src
+    command: npm run dev -- --host
+
+volumes:
+  mongo_data:
