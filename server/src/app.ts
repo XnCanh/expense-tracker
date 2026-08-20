@@ -2,6 +2,7 @@
 import cors from "cors";
 import mongoose from "mongoose";
 import { env } from "./config/env";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// TODO: Thêm routes của bạn ở đây
+// Global Error Handler
+app.use(errorHandler);
 
 export default app;
