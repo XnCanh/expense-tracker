@@ -22,6 +22,7 @@
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   
+  --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
 }
@@ -43,12 +44,14 @@ body {
     radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
     radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 60%);
   background-attachment: fixed;
+  overflow-x: hidden;
 }
 
 .font-mono {
   font-family: var(--font-mono);
 }
 
+/* Bento Card Style */
 .bento-card {
   background: var(--bg-card);
   backdrop-filter: blur(20px);
@@ -66,6 +69,7 @@ body {
   transform: translateY(-2px);
 }
 
+/* Button Component */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -80,6 +84,7 @@ body {
   text-decoration: none;
   transition: all 0.2s ease;
   font-family: var(--font-sans);
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -117,8 +122,10 @@ body {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
 }
 
+/* Badges */
 .badge-income {
   background: var(--success-glow);
   color: #34d399;
@@ -127,6 +134,9 @@ body {
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .badge-expense {
@@ -137,8 +147,12 @@ body {
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
+/* Form Controls */
 .form-control {
   width: 100%;
   background: rgba(15, 18, 29, 0.9);
@@ -147,6 +161,7 @@ body {
   padding: 12px 16px;
   color: var(--text-main);
   font-size: 14px;
+  font-family: var(--font-sans);
   outline: none;
   transition: all 0.2s ease;
 }
@@ -159,4 +174,74 @@ body {
 select.form-control option {
   background: #141826;
   color: #f8fafc;
+}
+
+/* ===================================================
+   RESPONSIVE MEDIA QUERIES
+   =================================================== */
+
+/* Tablet & Mobile Landscape (< 900px) */
+@media (max-width: 900px) {
+  .home-top-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .statement-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .statement-filter-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Mobile Portrait (< 640px) */
+@media (max-width: 640px) {
+  .bento-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  .navbar-container {
+    padding: 10px 14px !important;
+  }
+  .navbar-links {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .navbar-links .btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+  .home-hero-balance {
+    font-size: 28px !important;
+  }
+  .statement-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .statement-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .transaction-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+  .transaction-item-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 6px;
+  }
+  .export-toolbar {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+  .export-toolbar .btn {
+    width: 100%;
+  }
 }

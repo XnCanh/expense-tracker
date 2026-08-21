@@ -45,45 +45,45 @@ export default function CreateFirstWalletPage() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: 24,
+      padding: 16,
     }}>
-      <div className="bento-card" style={{ maxWidth: 480, width: "100%", padding: 32 }}>
+      <div className="bento-card" style={{ maxWidth: 460, width: "100%", padding: 24 }}>
         <div style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
+          width: 40,
+          height: 40,
+          borderRadius: 10,
           background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 22,
-          marginBottom: 16
+          fontSize: 20,
+          marginBottom: 12
         }}>
           💳
         </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Khởi Tạo Ví Đầu Tiên</h1>
-        <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Khởi Tạo Ví Đầu Tiên</h1>
+        <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>
           Bạn cần có ít nhất 1 ví tài khoản để bắt đầu theo dõi thu chi.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
               Tên ví *
             </label>
             <input
               className="form-control"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Ví tiền mặt, MB Bank, Techcombank..."
+              placeholder="VD: Ví tiền mặt, MB Bank..."
               required
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
                 Ngân hàng (Tùy chọn)
               </label>
               <input
@@ -94,7 +94,7 @@ export default function CreateFirstWalletPage() {
               />
             </div>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
                 Số tài khoản
               </label>
               <input
@@ -107,14 +107,14 @@ export default function CreateFirstWalletPage() {
           </div>
 
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
               Số dư ban đầu (VNĐ) *
             </label>
             <input
               type="number"
               min={0}
               className="form-control font-mono"
-              style={{ fontSize: 18, fontWeight: 700 }}
+              style={{ fontSize: 16, fontWeight: 700 }}
               value={initialBalance}
               onChange={(e) => setInitialBalance(e.target.value)}
               required
@@ -122,7 +122,7 @@ export default function CreateFirstWalletPage() {
           </div>
 
           <div>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
               Ngày bắt đầu tính toán *
             </label>
             <input
@@ -135,12 +135,12 @@ export default function CreateFirstWalletPage() {
           </div>
 
           {error && (
-            <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#fb7185", fontSize: 13 }}>
+            <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#fb7185", fontSize: 12 }}>
               ⚠️ {error}
             </div>
           )}
 
-          <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "14px 0", fontSize: 15, marginTop: 10 }}>
+          <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%", padding: "12px 0", fontSize: 14, marginTop: 6 }}>
             {submitting ? "Đang khởi tạo..." : "Xác Nhận Tạo Ví"}
           </button>
         </form>
