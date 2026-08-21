@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createWalletApi } from "../api/wallet";
+import { Wallet, AlertCircle } from "lucide-react";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -47,29 +48,29 @@ export default function CreateFirstWalletPage() {
       justifyContent: "center",
       padding: 16,
     }}>
-      <div className="bento-card" style={{ maxWidth: 460, width: "100%", padding: 24 }}>
+      <div className="bento-card" style={{ maxWidth: 460, width: "100%", padding: 28 }}>
         <div style={{
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: "var(--primary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 20,
-          marginBottom: 12
+          color: "#ffffff",
+          marginBottom: 14
         }}>
-          💳
+          <Wallet size={22} />
         </div>
 
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Khởi Tạo Ví Đầu Tiên</h1>
-        <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-main)", marginBottom: 4 }}>Khởi Tạo Ví Đầu Tiên</h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
           Bạn cần có ít nhất 1 ví tài khoản để bắt đầu theo dõi thu chi.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
               Tên ví *
             </label>
             <input
@@ -83,7 +84,7 @@ export default function CreateFirstWalletPage() {
 
           <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                 Ngân hàng (Tùy chọn)
               </label>
               <input
@@ -94,7 +95,7 @@ export default function CreateFirstWalletPage() {
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                 Số tài khoản
               </label>
               <input
@@ -107,7 +108,7 @@ export default function CreateFirstWalletPage() {
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
               Số dư ban đầu (VNĐ) *
             </label>
             <input
@@ -122,7 +123,7 @@ export default function CreateFirstWalletPage() {
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
               Ngày bắt đầu tính toán *
             </label>
             <input
@@ -135,8 +136,9 @@ export default function CreateFirstWalletPage() {
           </div>
 
           {error && (
-            <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#fb7185", fontSize: 12 }}>
-              ⚠️ {error}
+            <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--danger-bg)", border: "1px solid var(--danger)", color: "var(--danger-text)", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+              <AlertCircle size={16} />
+              <span>{error}</span>
             </div>
           )}
 

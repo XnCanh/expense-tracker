@@ -6,6 +6,7 @@ import { listCategoriesApi } from "../api/category";
 import { createTransactionApi } from "../api/transaction";
 import { Wallet } from "../types/wallet";
 import { Category, CategoryType } from "../types/category";
+import { ArrowUpRight, ArrowDownLeft, AlertCircle } from "lucide-react";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function formatVnd(amount: number): string {
@@ -76,20 +77,20 @@ export default function AddTransactionPage() {
     <div style={{ minHeight: "100vh", paddingBottom: 60 }}>
       <Navbar />
 
-      <main style={{ maxWidth: 520, margin: "28px auto", padding: "0 16px" }}>
+      <main style={{ maxWidth: 520, margin: "24px auto", padding: "0 16px" }}>
         <div className="bento-card">
           <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Ghi Chép Giao Dịch</h1>
-          <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>Tự động kiểm tra số dư và bảo vệ chống chi âm ACID.</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 18 }}>Tự động kiểm tra số dư và bảo vệ chống chi âm ACID.</p>
 
           <div style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: 6,
             padding: 4,
-            background: "rgba(15, 18, 29, 0.8)",
-            borderRadius: 12,
-            marginBottom: 20,
-            border: "1px solid rgba(255, 255, 255, 0.06)"
+            background: "var(--bg-input)",
+            borderRadius: 10,
+            marginBottom: 18,
+            border: "1px solid var(--border-subtle)"
           }}>
             <button
               type="button"
@@ -102,12 +103,16 @@ export default function AddTransactionPage() {
                 fontSize: 13,
                 cursor: "pointer",
                 transition: "all 0.2s ease",
-                background: type === "expense" ? "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)" : "transparent",
-                color: type === "expense" ? "#fff" : "#94a3b8",
-                boxShadow: type === "expense" ? "0 4px 15px rgba(244, 63, 94, 0.3)" : "none"
+                background: type === "expense" ? "var(--danger)" : "transparent",
+                color: type === "expense" ? "#fff" : "var(--text-muted)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6
               }}
             >
-              💸 Khoản Chi
+              <ArrowUpRight size={16} />
+              <span>Khoản Chi</span>
             </button>
             <button
               type="button"
@@ -120,18 +125,22 @@ export default function AddTransactionPage() {
                 fontSize: 13,
                 cursor: "pointer",
                 transition: "all 0.2s ease",
-                background: type === "income" ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "transparent",
-                color: type === "income" ? "#fff" : "#94a3b8",
-                boxShadow: type === "income" ? "0 4px 15px rgba(16, 185, 129, 0.3)" : "none"
+                background: type === "income" ? "var(--success)" : "transparent",
+                color: type === "income" ? "#fff" : "var(--text-muted)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6
               }}
             >
-              💰 Khoản Thu
+              <ArrowDownLeft size={16} />
+              <span>Khoản Thu</span>
             </button>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                 Số tiền (VNĐ) *
               </label>
               <input
@@ -148,9 +157,9 @@ export default function AddTransactionPage() {
 
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Ví thanh toán *</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>Ví thanh toán *</label>
                 {selectedWallet && (
-                  <span className="font-mono" style={{ fontSize: 11, color: isOverdraft ? "#f43f5e" : "#38bdf8" }}>
+                  <span className="font-mono" style={{ fontSize: 11, color: isOverdraft ? "var(--danger)" : "var(--primary)" }}>
                     Khả dụng: {formatVnd(selectedWallet.currentBalance)}
                   </span>
                 )}
@@ -165,7 +174,7 @@ export default function AddTransactionPage() {
             </div>
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                 Danh mục *
               </label>
               <select className="form-control" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
@@ -179,13 +188,13 @@ export default function AddTransactionPage() {
 
             <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                   Ngày thực hiện *
                 </label>
                 <input type="date" className="form-control" value={date} onChange={(e) => setDate(e.target.value)} required />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                   Ghi chú
                 </label>
                 <input className="form-control" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tùy chọn..." />
@@ -193,8 +202,9 @@ export default function AddTransactionPage() {
             </div>
 
             {error && (
-              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#fb7185", fontSize: 12 }}>
-                ⚠️ {error}
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--danger-bg)", border: "1px solid var(--danger)", color: "var(--danger-text)", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                <AlertCircle size={16} />
+                <span>{error}</span>
               </div>
             )}
 
