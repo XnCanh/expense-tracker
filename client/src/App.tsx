@@ -1,43 +1,67 @@
-﻿import { useState, useEffect } from "react";
+﻿import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { AuthProvider } from "./contexts/AuthContext";
+import RequireAuth from "./components/RequireAuth";
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
+import CreateFirstWalletPage from "./pages/CreateFirstWalletPage";
+import AddTransactionPage from "./pages/AddTransactionPage";
+import HistoryPage from "./pages/HistoryPage";
+import StatementPage from "./pages/StatementPage";
 
-interface HealthData {
-  status: string;
-  db: string;
-  timestamp: string;
-}
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function App() {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("http://localhost:5000/api/health")
-      .then((res) => res.json())
-      .then((data) => setHealth(data))
-      .catch((err) => console.error("Loi ket noi server:", err))
-      .finally(() => setLoading(false));
-  }, []);
-
   return (
-    <div style={{ maxWidth: 640, margin: "60px auto", padding: 24, fontFamily: "sans-serif", textAlign: "center" }}>
-      <h1>Web Quản Lý Chi Tiêu</h1>
-      <p style={{ color: "#666" }}>Dự án đã khởi tạo cấu trúc và kết nối MongoDB thành công.</p>
-
-      <div style={{ marginTop: 32, padding: 20, background: "#f5f5f5", borderRadius: 8, textAlign: "left" }}>
-        <h3>Trạng thái kết nối Hệ thống:</h3>
-        {loading ? (
-          <p>Đang kiểm tra...</p>
-        ) : health ? (
-          <ul>
-            <li><strong>Server:</strong> {health.status}</li>
-            <li><strong>MongoDB:</strong> {health.db}</li>
-            <li><strong>Thời gian:</strong> {new Date(health.timestamp).toLocaleString("vi-VN")}</li>
-          </ul>
-        ) : (
-          <p style={{ color: "red" }}>Không thể kết nối đến Backend Server (http://localhost:5000)</p>
-        )}
-      </div>
-    </div>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/wallets/new"
+              element={
+                <RequireAuth>
+                  <CreateFirstWalletPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/transactions/new"
+              element={
+                <RequireAuth>
+                  <AddTransactionPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <RequireAuth>
+                  <HistoryPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/reports/statement"
+              element={
+                <RequireAuth>
+                  <StatementPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <RequireAuth>
+                  <HomePage />
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }
 

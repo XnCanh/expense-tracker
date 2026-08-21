@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
 import { listWalletsApi } from "../api/wallet";
 import { listCategoriesApi } from "../api/category";
 import { createTransactionApi } from "../api/transaction";
@@ -7,6 +8,9 @@ import { Wallet } from "../types/wallet";
 import { Category, CategoryType } from "../types/category";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
+function formatVnd(amount: number): string {
+  return amount.toLocaleString("vi-VN") + " ₫";
+}
 
 export default function AddTransactionPage() {
   const navigate = useNavigate();
@@ -22,7 +26,6 @@ export default function AddTransactionPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Nạp danh sách ví 1 lần
   useEffect(() => {
     listWalletsApi().then((res) => {
       setWallets(res.wallets);
@@ -30,7 +33,6 @@ export default function AddTransactionPage() {
     });
   }, []);
 
-  // Nạp lại danh mục mỗi khi đổi loại Thu/Chi
   useEffect(() => {
     setCategoryId("");
     listCategoriesApi(type).then((cats) => {
@@ -39,14 +41,18 @@ export default function AddTransactionPage() {
     });
   }, [type]);
 
+  const selectedWallet = wallets.find((w) => w._id === walletId);
+  const parsedAmount = Number(amount) || 0;
+  const isOverdraft = type === "expense" && selectedWallet && parsedAmount > selectedWallet.currentBalance;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const parsedAmount = Number(amount);
-    if (!walletId) return setError("Vui lòng chọn ví");
+    if (!walletId) return setError("Vui lòng chọn ví thực hiện");
     if (!categoryId) return setError("Vui lòng chọn danh mục");
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return setError("Số tiền không hợp lệ");
+    if (parsedAmount <= 0) return setError("Số tiền phải lớn hơn 0");
+    if (isOverdraft) return setError("Số dư trong ví không đủ để chi tiêu!");
 
     setSubmitting(true);
     try {
@@ -60,84 +66,149 @@ export default function AddTransactionPage() {
       });
       navigate("/", { replace: true });
     } catch (err: any) {
-      // Lỗi phổ biến nhất: "Số dư trong ví không đủ" từ server
-      setError(err?.response?.data?.message ?? "Thêm giao dịch thất bại, vui lòng thử lại.");
+      setError(err?.response?.data?.message ?? "Ghi chép giao dịch thất bại.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto", padding: 24 }}>
-      <h1>Thêm giao dịch</h1>
+    <div style={{ minHeight: "100vh", paddingBottom: 60 }}>
+      <Navbar />
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button
-          type="button"
-          onClick={() => setType("expense")}
-          style={{ fontWeight: type === "expense" ? 700 : 400 }}
-        >
-          Chi
-        </button>
-        <button
-          type="button"
-          onClick={() => setType("income")}
-          style={{ fontWeight: type === "income" ? 700 : 400 }}
-        >
-          Thu
-        </button>
-      </div>
+      <main style={{ maxWidth: 540, margin: "40px auto", padding: "0 24px" }}>
+        <div className="bento-card">
+          <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Ghi Chép Giao Dịch</h1>
+          <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>Hệ thống tự động cập nhật số dư ví theo chuẩn ACID.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <label>
-          Số tiền *
-          <input
-            type="number"
-            min={0}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
-        </label>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            padding: 4,
+            background: "rgba(15, 18, 29, 0.8)",
+            borderRadius: 14,
+            marginBottom: 24,
+            border: "1px solid rgba(255, 255, 255, 0.06)"
+          }}>
+            <button
+              type="button"
+              onClick={() => setType("expense")}
+              style={{
+                padding: "10px 0",
+                borderRadius: 10,
+                border: "none",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                background: type === "expense" ? "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)" : "transparent",
+                color: type === "expense" ? "#fff" : "#94a3b8",
+                boxShadow: type === "expense" ? "0 4px 15px rgba(244, 63, 94, 0.3)" : "none"
+              }}
+            >
+              💸 Khoản Chi (Tiền ra)
+            </button>
+            <button
+              type="button"
+              onClick={() => setType("income")}
+              style={{
+                padding: "10px 0",
+                borderRadius: 10,
+                border: "none",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                background: type === "income" ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "transparent",
+                color: type === "income" ? "#fff" : "#94a3b8",
+                boxShadow: type === "income" ? "0 4px 15px rgba(16, 185, 129, 0.3)" : "none"
+              }}
+            >
+              💰 Khoản Thu (Tiền vào)
+            </button>
+          </div>
 
-        <label>
-          Ví *
-          <select value={walletId} onChange={(e) => setWalletId(e.target.value)} required>
-            {wallets.map((w) => (
-              <option key={w._id} value={w._id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                Số tiền (VNĐ) *
+              </label>
+              <input
+                type="number"
+                min={0}
+                className="form-control font-mono"
+                style={{ fontSize: 20, fontWeight: 700 }}
+                placeholder="VD: 50000"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+            </div>
 
-        <label>
-          Danh mục *
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Ví thanh toán *</label>
+                {selectedWallet && (
+                  <span className="font-mono" style={{ fontSize: 12, color: isOverdraft ? "#f43f5e" : "#38bdf8" }}>
+                    Khả dụng: {formatVnd(selectedWallet.currentBalance)}
+                  </span>
+                )}
+              </div>
+              <select className="form-control" value={walletId} onChange={(e) => setWalletId(e.target.value)} required>
+                {wallets.map((w) => (
+                  <option key={w._id} value={w._id}>
+                    {w.name} ({formatVnd(w.currentBalance)})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <label>
-          Ngày *
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </label>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                Danh mục *
+              </label>
+              <select className="form-control" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <label>
-          Ghi chú
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tuỳ chọn" />
-        </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                  Ngày thực hiện *
+                </label>
+                <input type="date" className="form-control" value={date} onChange={(e) => setDate(e.target.value)} required />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                  Ghi chú
+                </label>
+                <input className="form-control" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tùy chọn..." />
+              </div>
+            </div>
 
-        {error && <p style={{ color: "crimson" }}>{error}</p>}
+            {error && (
+              <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#fb7185", fontSize: 13 }}>
+                ⚠️ {error}
+              </div>
+            )}
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Đang lưu..." : "Lưu giao dịch"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              disabled={submitting || !!isOverdraft}
+              className={`btn ${type === "expense" ? "btn-danger" : "btn-success"}`}
+              style={{ width: "100%", padding: "14px 0", fontSize: 15, marginTop: 8 }}
+            >
+              {submitting ? "Đang xử lý..." : isOverdraft ? "Số dư không đủ" : "Lưu Giao Dịch"}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }
