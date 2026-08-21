@@ -141,7 +141,7 @@ export async function exportWalletStatementExcel(
   );
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="sao-ke-${wallet.name.replace(/\s+/g, "-")}.xlsx"`
+    `attachment; filename="sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.xlsx"; filename*=UTF-8''sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.xlsx`
   );
 
   const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res });
@@ -225,7 +225,7 @@ export async function exportWalletStatementPdf(
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="sao-ke-${wallet.name.replace(/\s+/g, "-")}.pdf"`
+    `attachment; filename="sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.pdf"; filename*=UTF-8''sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.pdf`
   );
 
   const doc = new PDFDocument({ margin: 40, size: "A4" });

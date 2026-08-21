@@ -36,12 +36,10 @@ export default function LoginPage() {
         style={{ position: "absolute", top: 20, right: 20, borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 6 }}
       >
         {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-        <span>{theme === "dark" ? "Giao diện Sáng" : "Giao diện Tối"}</span>
       </button>
 
       <div className="bento-card" style={{ maxWidth: 440, width: "100%", padding: 32, textAlign: "center" }}>
         
-        {/* Open Book Logo Badge */}
         <div style={{
           width: 56,
           height: 56,
@@ -82,22 +80,23 @@ export default function LoginPage() {
           borderTop: "1px solid var(--border-subtle)",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: 10,
-          textAlign: "left"
+          rowGap: 12,
+          columnGap: 8,
+          alignItems: "center"
         }}>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, justifySelf: "start" }}>
             <Lock size={14} color="var(--primary)" />
             <span><strong>Bảo mật tài khoản</strong></span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, justifySelf: "end" }}>
             <ShieldCheck size={14} color="var(--success)" />
             <span><strong>Chống chi tiêu âm</strong></span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, justifySelf: "start" }}>
             <FileSpreadsheet size={14} color="var(--primary)" />
             <span><strong>Sao kê Excel & PDF</strong></span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6, justifySelf: "end" }}>
             <CreditCard size={14} color="var(--primary)" />
             <span><strong>Quản lý nhiều Ví</strong></span>
           </div>
