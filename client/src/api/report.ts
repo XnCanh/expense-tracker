@@ -31,7 +31,7 @@ export async function getWalletStatementApi(params: WalletStatementParams): Prom
   return data;
 }
 
-// Tải file xuất (Excel/PDF). Dùng fetch + Authorization header
+// Tải file xuất (Excel/PDF) dạng Stream (O(1) RAM)
 export async function downloadStatementFile(
   format: "excel" | "pdf",
   params: WalletStatementParams
@@ -42,22 +42,26 @@ export async function downloadStatementFile(
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
 
-  const baseUrl = import.meta.env.VITE_API_URL;
-  const res = await fetch(`${baseUrl}/reports/statement/export/${format}`, {
+  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  const url = `${baseUrl}/reports/statement/export/${format}?${query.toString()}`;
+
+  const res = await fetch(url, {
+    method: "GET",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
   if (!res.ok) {
-    throw new Error("Xuất file thất bại");
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Xuất file thất bại");
   }
 
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const downloadUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = format === "excel" ? "sao-ke.xlsx" : "sao-ke.pdf";
+  a.href = downloadUrl;
+  a.download = format === "excel" ? `sao-ke-${Date.now()}.xlsx` : `sao-ke-${Date.now()}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(downloadUrl);
 }

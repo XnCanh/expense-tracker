@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -7,6 +8,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const navLinks = [
     { path: "/", label: "Trang chủ", icon: (active: boolean) => <Home size={active ? 20 : 18} /> },
@@ -64,7 +66,6 @@ export default function Navbar() {
                   to={link.path}
                   className="btn"
                   style={{
-                    // background: isActive ? "var(--primary-bg)" : "transparent",
                     color: isActive ? "var(--primary)" : "var(--text-muted)",
                     borderBottom: isActive ? "3px solid var(--primary)" : "3px solid transparent",
                     borderRadius: isActive ? "8px 8px 0 0" : "8px",
@@ -83,8 +84,9 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Right Tools: Theme Switch + User + Logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Right Tools: Theme Switch + User Avatar with Popup Menu */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
               className="btn btn-secondary"
@@ -94,31 +96,131 @@ export default function Navbar() {
               {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid var(--primary)" }}
-              />
-            ) : (
-              <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                background: "var(--primary-bg)",
-                color: "var(--primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 700,
-                fontSize: 12
-              }}>
-                {user?.name?.charAt(0) || "U"}
-              </div>
-            )}
-            <button onClick={logout} className="btn btn-secondary" style={{ padding: "6px 10px", fontSize: 12, borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <LogOut size={14} />
-            </button>
+            {/* User Avatar with Profile Dropdown Popup */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowProfileMenu((prev) => !prev)}
+                title="Tài khoản & Đăng xuất"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    style={{ width: 34, height: 34, borderRadius: "50%", border: "2px solid var(--primary)" }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    background: "var(--primary-bg)",
+                    color: "var(--primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    border: "2px solid var(--primary)"
+                  }}>
+                    {user?.name?.charAt(0) || "U"}
+                  </div>
+                )}
+              </button>
+
+              {/* Profile Dropdown Popup */}
+              {showProfileMenu && (
+                <>
+                  {/* Backdrop to close on click outside */}
+                  <div
+                    onClick={() => setShowProfileMenu(false)}
+                    style={{ position: "fixed", inset: 0, zIndex: 998 }}
+                  />
+
+                  <div
+                    className="bento-card"
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 10px)",
+                      right: 0,
+                      width: 250,
+                      padding: 16,
+                      background: "var(--bg-surface)",
+                      boxShadow: "0 12px 36px rgba(0,0,0,0.3)",
+                      borderRadius: 14,
+                      zIndex: 999,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                      animation: "modalScaleIn 0.15s ease-out"
+                    }}
+                  >
+                    {/* User Profile Header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 12 }}>
+                      {user?.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.name}
+                          style={{ width: 40, height: 40, borderRadius: "50%" }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: "var(--primary-bg)",
+                          color: "var(--primary)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          fontSize: 15
+                        }}>
+                          {user?.name?.charAt(0) || "U"}
+                        </div>
+                      )}
+                      <div style={{ overflow: "hidden" }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-main)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                          {user?.name || "Tài khoản"}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                          {user?.email || ""}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logout Button */}
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        logout();
+                      }}
+                      className="btn btn-danger"
+                      style={{
+                        width: "100%",
+                        padding: "9px 0",
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        borderRadius: 8
+                      }}
+                    >
+                      <LogOut size={15} />
+                      <span>Đăng xuất tài khoản</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>

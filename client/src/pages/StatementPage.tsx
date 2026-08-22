@@ -10,12 +10,29 @@ function formatVnd(amount: number): string {
   return amount.toLocaleString("vi-VN") + " ₫";
 }
 
+// Lấy ngày đầu tháng hiện tại (YYYY-MM-DD)
+const getFirstDayOfMonth = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
+};
+
+// Lấy ngày hôm nay (YYYY-MM-DD)
+const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function StatementPage() {
   const { showSuccess, showError } = useNotification();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [walletId, setWalletId] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(getFirstDayOfMonth());
+  const [to, setTo] = useState(getTodayStr());
   const [result, setResult] = useState<WalletStatementResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
@@ -23,34 +40,70 @@ export default function StatementPage() {
   useEffect(() => {
     listWalletsApi().then((res) => {
       setWallets(res.wallets);
-      if (res.wallets.length > 0) setWalletId(res.wallets[0]._id);
+      if (res.wallets.length > 0) {
+        const firstWalletId = res.wallets[0]._id;
+        setWalletId(firstWalletId);
+        // Tự động tải sao kê tháng hiện tại của ví đầu tiên
+        fetchStatement(firstWalletId, getFirstDayOfMonth(), getTodayStr());
+      }
     });
   }, []);
 
-  async function handleFilter() {
-    if (!walletId) return;
+  const fetchStatement = async (wId: string, fromDate: string, toDate: string) => {
+    if (!wId) return;
     setLoading(true);
     try {
       const res = await getWalletStatementApi({
-        walletId,
-        from: from || undefined,
-        to: to || undefined,
+        walletId: wId,
+        from: fromDate,
+        to: toDate,
         limit: 100,
       });
       setResult(res);
+    } catch (err: any) {
+      showError(err?.response?.data?.message || "Lỗi khi lấy dữ liệu sao kê.");
     } finally {
       setLoading(false);
     }
+  };
+
+  async function handleFilter() {
+    if (!walletId) {
+      showError("Vui lòng chọn ví cần sao kê.");
+      return;
+    }
+    if (!from || !to) {
+      showError("Vui lòng chọn đầy đủ 'Từ ngày' và 'Đến ngày'.");
+      return;
+    }
+    if (new Date(from) > new Date(to)) {
+      showError("'Từ ngày' không được lớn hơn 'Đến ngày'.");
+      return;
+    }
+
+    await fetchStatement(walletId, from, to);
   }
 
   async function handleExport(format: "excel" | "pdf") {
-    if (!walletId) return;
+    if (!walletId) {
+      showError("Vui lòng chọn ví cần xuất sao kê.");
+      return;
+    }
+    if (!from || !to) {
+      showError("Vui lòng chọn khoảng thời gian cần xuất.");
+      return;
+    }
+    if (new Date(from) > new Date(to)) {
+      showError("'Từ ngày' không được lớn hơn 'Đến ngày'.");
+      return;
+    }
+
     setExporting(format);
     try {
-      await downloadStatementFile(format, { walletId, from: from || undefined, to: to || undefined });
+      await downloadStatementFile(format, { walletId, from, to });
       showSuccess(`Đã tải xuống file ${format.toUpperCase()} thành công.`);
-    } catch (err) {
-      showError("Xuất file sao kê thất bại, vui lòng thử lại.");
+    } catch (err: any) {
+      showError(err?.message || "Xuất file sao kê thất bại, vui lòng thử lại.");
     } finally {
       setExporting(null);
     }
@@ -66,26 +119,32 @@ export default function StatementPage() {
         <div className="bento-card" style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Trung Tâm Sao Kê Tài Khoản</h1>
           
-          <div className="statement-filter-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+          <div className="statement-filter-grid" style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Chọn ví</label>
-              <select className="form-control" value={walletId} onChange={(e) => setWalletId(e.target.value)}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
+                Chọn ví tài khoản *
+              </label>
+              <select className="form-control" value={walletId} onChange={(e) => setWalletId(e.target.value)} required>
                 {wallets.map((w) => (
-                  <option key={w._id} value={w._id}>{w.name}</option>
+                  <option key={w._id} value={w._id}>{w.name} {w.bankName ? `(${w.bankName})` : ""}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Từ ngày</label>
-              <input type="date" className="form-control" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
+                Từ ngày *
+              </label>
+              <input type="date" className="form-control" value={from} onChange={(e) => setFrom(e.target.value)} required />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Đến ngày</label>
-              <input type="date" className="form-control" value={to} onChange={(e) => setTo(e.target.value)} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
+                Đến ngày *
+              </label>
+              <input type="date" className="form-control" value={to} onChange={(e) => setTo(e.target.value)} required />
             </div>
             <button onClick={handleFilter} disabled={!walletId || loading} className="btn btn-primary" style={{ padding: "10px 18px", width: "100%" }}>
               <Search size={16} />
-              <span>{loading ? "Đang xử lý..." : "Xem Sao Kê"}</span>
+              <span>{loading ? "Đang tải..." : "Xem Sao Kê"}</span>
             </button>
           </div>
         </div>
@@ -116,7 +175,7 @@ export default function StatementPage() {
             {/* Export Toolbar */}
             <div className="export-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700 }}>
-                Chi tiết ({result.transactions.total} giao dịch)
+                Chi tiết ({result.transactions.total} giao dịch - Mới nhất đến cũ nhất)
               </h2>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => handleExport("excel")} disabled={exporting !== null} className="btn btn-secondary">
