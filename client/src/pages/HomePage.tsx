@@ -131,45 +131,68 @@ export default function HomePage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                 {wallets.map((w) => (
-                  <div key={w._id} className="bento-card" style={{ padding: 16, position: "relative" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div style={{ paddingRight: 8 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
-                          <span>{w.name}</span>
+                  <div
+                    key={w._id}
+                    className="bento-card"
+                    style={{
+                      padding: 16,
+                      position: "relative",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      minHeight: 140
+                    }}
+                  >
+                    <div>
+                      {/* Hàng 1: Tên ví + Icon & Nút gỡ */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div style={{ paddingRight: 8 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-main)" }}>
+                            {w.name}
+                          </div>
+                          {/* Hàng 2: Loại ngân hàng / Ví */}
+                          <div style={{ fontSize: 12, color: "var(--primary)", marginTop: 2 }}>
+                            {w.bankName ? `Ngân hàng: ${w.bankName}` : "Loại: Ví tiền mặt"}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 12, color: "var(--primary)", marginTop: 2 }}>
-                          {w.bankName ? `Ngân hàng: ${w.bankName}` : "Ví tiền mặt"}
+                        
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <CreditCard size={18} color="var(--primary)" />
+                          <button
+                            onClick={() => handleDeleteWallet(w)}
+                            disabled={deletingId === w._id}
+                            className="btn btn-secondary"
+                            title="Gỡ ví này"
+                            style={{
+                              padding: "4px 6px",
+                              borderRadius: 6,
+                              color: "var(--danger-text)",
+                              border: "1px solid var(--border-subtle)",
+                              background: "transparent",
+                              cursor: "pointer"
+                            }}
+                          >
+                            <Trash2 size={14} color="var(--danger)" />
+                          </button>
                         </div>
                       </div>
-                      
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <CreditCard size={18} color="var(--primary)" />
-                        {/* Nút Gỡ Ví */}
-                        <button
-                          onClick={() => handleDeleteWallet(w)}
-                          disabled={deletingId === w._id}
-                          className="btn btn-secondary"
-                          title="Gỡ ví này"
-                          style={{
-                            padding: "4px 6px",
-                            borderRadius: 6,
-                            color: "var(--danger-text)",
-                            border: "1px solid var(--border-subtle)",
-                            background: "transparent",
-                            cursor: "pointer"
-                          }}
-                        >
-                          <Trash2 size={14} color="var(--danger)" />
-                        </button>
+
+                      {/* Hàng 3: STK nếu có, ẩn nếu là ví tiền mặt nhưng giữ nguyên chiều cao định dạng */}
+                      <div
+                        className="font-mono"
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-dim)",
+                          marginTop: 8,
+                          minHeight: 16,
+                          visibility: w.accountNumber ? "visible" : "hidden"
+                        }}
+                      >
+                        {w.accountNumber ? `STK: ${w.accountNumber}` : "STK: --"}
                       </div>
                     </div>
 
-                    {w.accountNumber && (
-                      <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 8 }}>
-                        STK: {w.accountNumber}
-                      </div>
-                    )}
-
+                    {/* Vạch ngăn cách & Số dư đồng bộ vị trí */}
                     <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Số dư hiện tại</span>
                       <span className="font-mono" style={{ fontWeight: 700, fontSize: 16, color: "var(--primary)" }}>
@@ -228,8 +251,20 @@ export default function HomePage() {
                             {isIncome ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>{categoryName}</div>
-                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                color: isIncome ? "var(--success-text)" : "var(--danger-text)",
+                                background: isIncome ? "var(--success-bg)" : "var(--danger-bg)",
+                                padding: "1px 6px",
+                                borderRadius: 4
+                              }}>
+                                {isIncome ? "Thu" : "Chi"}
+                              </span>
+                              <span>{categoryName}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                               {new Date(t.date).toLocaleDateString("vi-VN")}
                               {t.note ? ` · ${t.note}` : ""}
                             </div>

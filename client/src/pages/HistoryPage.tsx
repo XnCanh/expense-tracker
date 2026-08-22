@@ -84,10 +84,20 @@ export default function HistoryPage() {
                         {isIncome ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
-                          {categoryName}
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: isIncome ? "var(--success-text)" : "var(--danger-text)",
+                            background: isIncome ? "var(--success-bg)" : "var(--danger-bg)",
+                            padding: "1px 6px",
+                            borderRadius: 4
+                          }}>
+                            {isIncome ? "Thu" : "Chi"}
+                          </span>
+                          <span>{categoryName}</span>
                         </div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                           {new Date(t.date).toLocaleDateString("vi-VN")}
                           {t.note ? ` · ${t.note}` : ""}
                         </div>

@@ -96,19 +96,19 @@ export default function StatementPage() {
             
             <div className="statement-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
               <div className="bento-card">
-                <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase" }}>Số dư đầu kỳ</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Số Dư Đầu Kỳ</div>
                 <div className="font-mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{formatVnd(result.openingBalance)}</div>
               </div>
               <div className="bento-card" style={{ borderLeft: "3px solid var(--success)" }}>
-                <div style={{ fontSize: 11, color: "var(--success-text)", textTransform: "uppercase" }}>Tổng Thu</div>
+                <div style={{ fontSize: 11, color: "var(--success-text)" }}>Tổng Thu</div>
                 <div className="font-mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--success-text)" }}>+{formatVnd(result.totalIncome)}</div>
               </div>
               <div className="bento-card" style={{ borderLeft: "3px solid var(--danger)" }}>
-                <div style={{ fontSize: 11, color: "var(--danger-text)", textTransform: "uppercase" }}>Tổng Chi</div>
+                <div style={{ fontSize: 11, color: "var(--danger-text)" }}>Tổng Chi</div>
                 <div className="font-mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--danger-text)" }}>-{formatVnd(result.totalExpense)}</div>
               </div>
               <div className="bento-card" style={{ borderLeft: "3px solid var(--primary)" }}>
-                <div style={{ fontSize: 11, color: "var(--primary-text)", textTransform: "uppercase" }}>Số dư cuối kỳ</div>
+                <div style={{ fontSize: 11, color: "var(--primary-text)" }}>Số Dư Cuối Kỳ</div>
                 <div className="font-mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--primary-text)" }}>{formatVnd(result.closingBalance)}</div>
               </div>
             </div>
@@ -170,10 +170,20 @@ export default function StatementPage() {
                             {isIncome ? <ArrowDownLeft size={15} /> : <ArrowUpRight size={15} />}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
-                              {categoryName}
+                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                color: isIncome ? "var(--success-text)" : "var(--danger-text)",
+                                background: isIncome ? "var(--success-bg)" : "var(--danger-bg)",
+                                padding: "1px 6px",
+                                borderRadius: 4
+                              }}>
+                                {isIncome ? "Thu" : "Chi"}
+                              </span>
+                              <span>{categoryName}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                               {new Date(t.date).toLocaleDateString("vi-VN")}
                               {t.note ? ` · ${t.note}` : ""}
                             </div>
