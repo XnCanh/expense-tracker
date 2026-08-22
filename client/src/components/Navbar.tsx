@@ -19,7 +19,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* TOP HEADER (Desktop & Mobile) */}
+      {/* THANH TIÊU ĐỀ TRÊN CÙNG (Máy tính & Điện thoại) */}
       <nav style={{
         background: "var(--nav-bg)",
         borderBottom: "1px solid var(--border-subtle)",
@@ -37,7 +37,7 @@ export default function Navbar() {
           alignItems: "center",
           gap: 12
         }}>
-          {/* Brand Logo */}
+          {/* Logo thương hiệu */}
           <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--text-main)" }}>
             <div style={{
               width: 36,
@@ -56,7 +56,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Center Navigation Tabs (Desktop only) */}
+          {/* Thanh điều hướng trung tâm (Chỉ hiển thị trên Máy tính) */}
           <div className="desktop-nav-links" style={{ display: "flex", gap: 4, alignItems: "center" }}>
             {navLinks.map((link) => {
               const isActive = location.pathname === link.path;
@@ -84,9 +84,9 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Right Tools: Theme Switch + User Avatar with Popup Menu */}
+          {/* Công cụ bên phải: Nút đổi giao diện Sáng/Tối + Avatar người dùng kèm Menu Popup */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Theme Toggle Button */}
+            {/* Nút chuyển đổi Giao diện Sáng/Tối */}
             <button
               onClick={toggleTheme}
               className="btn btn-secondary"
@@ -96,7 +96,7 @@ export default function Navbar() {
               {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
-            {/* User Avatar with Profile Dropdown Popup */}
+            {/* Avatar người dùng với Menu Popup thả xuống */}
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowProfileMenu((prev) => !prev)}
@@ -137,10 +137,10 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Profile Dropdown Popup */}
+              {/* Popup thông tin tài khoản */}
               {showProfileMenu && (
                 <>
-                  {/* Backdrop to close on click outside */}
+                  {/* Lớp nền mờ để tự động đóng khi nhấn ra ngoài */}
                   <div
                     onClick={() => setShowProfileMenu(false)}
                     style={{ position: "fixed", inset: 0, zIndex: 998 }}
@@ -164,7 +164,7 @@ export default function Navbar() {
                       animation: "modalScaleIn 0.15s ease-out"
                     }}
                   >
-                    {/* User Profile Header */}
+                    {/* Phần thông tin người dùng */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 12 }}>
                       {user?.avatarUrl ? (
                         <img
@@ -200,7 +200,7 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {/* Logout Button */}
+                    {/* Nút Đăng xuất */}
                     <button
                       onClick={() => {
                         setShowProfileMenu(false);
@@ -229,7 +229,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* MOBILE FLOATING CURVED BOTTOM NAVIGATION BAR */}
+      {/* THANH ĐIỀU HƯỚNG NỔI DẠNG CONG Ở ĐÁY MÀN HÌNH (Dành riêng cho Điện thoại) */}
       <div className="mobile-bottom-bar">
         {navLinks.map((link) => {
           const isActive = location.pathname === link.path;

@@ -8,7 +8,7 @@ import { Transaction, ITransaction } from "../models/Transaction";
 import { IWallet } from "../models/Wallet";
 import { getWalletOrThrow } from "./walletService";
 
-// Helper dinh dang ngay VN (DD/MM/YYYY)
+// Hàm hỗ trợ định dạng ngày tháng chuẩn Việt Nam (DD/MM/YYYY)
 function formatDateVn(date: Date | string): string {
   const d = new Date(date);
   const day = String(d.getDate()).padStart(2, "0");
@@ -17,12 +17,12 @@ function formatDateVn(date: Date | string): string {
   return `${day}/${month}/${year}`;
 }
 
-// Helper dinh dang tien VND
+// Hàm hỗ trợ định dạng tiền tệ VNĐ
 function formatVnd(amount: number): string {
   return amount.toLocaleString("vi-VN") + " đ";
 }
 
-// Tinh so du dau ky
+// Tính toán chính xác số dư đầu kỳ theo thời gian
 async function computeOpeningBalance(
   userId: Types.ObjectId,
   wallet: IWallet,
@@ -48,7 +48,7 @@ async function computeOpeningBalance(
   return wallet.initialBalance + prevIncome - prevExpense;
 }
 
-// Xay dung bo loc thoi gian
+// Xây dựng bộ lọc khoảng thời gian truy vấn
 function buildRangeFilter(
   userId: Types.ObjectId,
   walletId: Types.ObjectId,
@@ -94,7 +94,7 @@ export interface StatementResult {
   };
 }
 
-// Lay sao ke vi (JSON) - Sắp xếp MỚI NHẤT -> CŨ NHẤT
+// Lấy dữ liệu sao kê chi tiết dạng JSON (Sắp xếp từ MỚI NHẤT đến CŨ NHẤT)
 export async function getWalletStatement(
   userId: Types.ObjectId,
   query: StatementQuery
@@ -141,7 +141,7 @@ export interface ExportStatementQuery {
   to?: Date;
 }
 
-// Export sao ke ra file Excel (Stream O(1) RAM)
+// Xuất báo cáo sao kê ra file Excel (Kiến trúc Stream, tiêu thụ RAM tối thiểu O(1))
 export async function exportWalletStatementExcel(
   res: Response,
   userId: Types.ObjectId,
@@ -250,7 +250,7 @@ export async function exportWalletStatementExcel(
   await workbook.commit();
 }
 
-// Export sao ke ra file PDF (Full Tieng Viet Unicode, căn chỉnh cột không bị tràn)
+// Xuất báo cáo sao kê ra file PDF (Hỗ trợ 100% Font Unicode Tiếng Việt, căn lề chuẩn A4)
 export async function exportWalletStatementPdf(
   res: Response,
   userId: Types.ObjectId,

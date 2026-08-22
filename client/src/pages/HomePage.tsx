@@ -109,7 +109,7 @@ export default function HomePage() {
 
               <div className="bento-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Số lượng Ví</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Số Lượng Ví</div>
                   <div className="font-mono" style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: "var(--primary)" }}>
                     {wallets.length} <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 500 }}>tài khoản</span>
                   </div>

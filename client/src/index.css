@@ -101,7 +101,7 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Facebook Card Container */
+/* Khung chứa dạng thẻ Facebook */
 .bento-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -114,7 +114,7 @@ body {
   border-color: var(--border-highlight);
 }
 
-/* Facebook Buttons */
+/* Các nút bấm chuẩn phong cách Facebook */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -164,7 +164,7 @@ body {
   cursor: not-allowed;
 }
 
-/* Badges */
+/* Huy hiệu và Thẻ trạng thái */
 .badge-income {
   background-color: var(--success-bg);
   color: var(--success-text);
@@ -188,7 +188,7 @@ body {
   font-weight: 700;
 }
 
-/* Form Controls */
+/* Ô nhập liệu và Chọn lựa (Input, Select) */
 .form-control {
   width: 100%;
   background: var(--bg-input);
@@ -211,7 +211,7 @@ select.form-control option {
   color: var(--text-main);
 }
 
-/* Responsive queries */
+/* Quy tắc hiển thị tương thích đa màn hình (Responsive) */
 @media (max-width: 900px) {
   .home-top-grid { grid-template-columns: 1fr !important; }
   .statement-summary-grid { grid-template-columns: repeat(2, 1fr) !important; }

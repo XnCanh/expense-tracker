@@ -115,7 +115,7 @@ export default function StatementPage() {
 
       <main style={{ maxWidth: 1100, margin: "20px auto", padding: "0 16px" }}>
         
-        {/* Filter Card */}
+        {/* Khung bộ lọc sao kê */}
         <div className="bento-card" style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Trung Tâm Sao Kê Tài Khoản</h1>
           
@@ -149,7 +149,7 @@ export default function StatementPage() {
           </div>
         </div>
 
-        {/* Statement Summary */}
+        {/* Khối tổng hợp số liệu sao kê */}
         {result && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             
@@ -172,7 +172,7 @@ export default function StatementPage() {
               </div>
             </div>
 
-            {/* Export Toolbar */}
+            {/* Thanh công cụ xuất báo cáo */}
             <div className="export-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700 }}>
                 Chi tiết ({result.transactions.total} giao dịch - Mới nhất đến cũ nhất)
@@ -189,7 +189,7 @@ export default function StatementPage() {
               </div>
             </div>
 
-            {/* Transaction List */}
+            {/* Bảng danh sách chi tiết giao dịch */}
             <div className="bento-card" style={{ padding: 8 }}>
               {result.transactions.items.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "36px 0", color: "var(--text-dim)" }}>

@@ -17,7 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [requiresWalletSetup, setRequiresWalletSetup] = useState(false);
 
-  // Khi app khởi động, nếu đã có token lưu sẵn -> thử lấy lại thông tin user
+  // Khi ứng dụng khởi động: Kiểm tra token đã lưu trong bộ nhớ để phục hồi phiên đăng nhập
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) {
