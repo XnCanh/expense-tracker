@@ -114,7 +114,9 @@ export default function Navbar() {
                   <img
                     src={user.avatarUrl}
                     alt={user.name}
-                    style={{ width: 34, height: 34, borderRadius: "50%", border: "2px solid var(--primary)" }}
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    style={{ width: 34, height: 34, borderRadius: "50%", border: "2px solid var(--primary)", objectFit: "cover" }}
                   />
                 ) : (
                   <div style={{
@@ -168,7 +170,9 @@ export default function Navbar() {
                         <img
                           src={user.avatarUrl}
                           alt={user.name}
-                          style={{ width: 40, height: 40, borderRadius: "50%" }}
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }}
                         />
                       ) : (
                         <div style={{

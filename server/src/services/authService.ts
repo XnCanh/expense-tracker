@@ -18,7 +18,7 @@ async function verifyGoogleIdToken(idToken: string) {
   return payload;
 }
 
-// Đăng nhập bằng Google (tự động tạo user nếu chưa có)
+// Đăng nhập bằng Google (tạo mới hoặc cập nhật avatarUrl & name mới nhất)
 export async function loginWithGoogle(idToken: string): Promise<IUser> {
   const payload = await verifyGoogleIdToken(idToken);
 
@@ -31,6 +31,19 @@ export async function loginWithGoogle(idToken: string): Promise<IUser> {
       name: payload.name ?? payload.email!,
       avatarUrl: payload.picture,
     });
+  } else {
+    let updated = false;
+    if (payload.picture && user.avatarUrl !== payload.picture) {
+      user.avatarUrl = payload.picture;
+      updated = true;
+    }
+    if (payload.name && user.name !== payload.name) {
+      user.name = payload.name;
+      updated = true;
+    }
+    if (updated) {
+      await user.save();
+    }
   }
 
   return user;
