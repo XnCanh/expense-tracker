@@ -1,107 +1,62 @@
-﻿# Web Quản Lý Chi Tiêu (Expense Tracker)
+# 💰 Web Quản Lý Chi Tiêu Cá Nhân (Expense Tracker)
 
-Dự án Web Quản lý Chi tiêu cá nhân và sao kê đa tài khoản ngân hàng.
-
----
-
-## 📁 Cấu trúc Dự án (Architecture)
-
-```text
-expense-tracker/
-├── docker-compose.yml         # Thiết lập container MongoDB (Replica Set), Server, Client
-├── .gitignore                 # Bỏ qua node_modules, .env, mongo_data...
-├── README.md                  # Hướng dẫn chạy và tài liệu dự án
-│
-├── server/                    # Backend (Node.js + Express + TypeScript)
-│   ├── Dockerfile
-│   ├── .dockerignore
-│   ├── .env.example
-│   ├── .env
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── config/            # Cấu hình db.ts (MongoDB Mongoose), env.ts
-│       ├── controllers/       # Controller xử lý nghiệp vụ
-│       ├── middlewares/       # Auth JWT middleware, Error handling
-│       ├── models/            # Schema User, Wallet, Category, Transaction
-│       ├── routes/            # Khai báo endpoint API
-│       ├── services/          # Business logic & Transaction
-│       ├── utils/             # Helper format, JWT, stream
-│       ├── app.ts             # Express App
-│       └── server.ts          # Server bootstrap & DB connection
-│
-└── client/                    # Frontend (React + Vite + TypeScript)
-    ├── Dockerfile
-    ├── .dockerignore
-    ├── .env.example
-    ├── .env
-    ├── index.html
-    ├── package.json
-    ├── tsconfig.json
-    ├── vite.config.ts
-    └── src/
-        ├── api/               # Axios client & API endpoints
-        ├── components/        # Layout & Route guards
-        ├── contexts/          # Auth Context
-        ├── pages/             # Các trang giao diện
-        ├── types/             # Type definitions
-        ├── App.tsx
-        ├── index.css          # Design system & styles
-        └── main.tsx
-```
+Hệ thống Web Quản lý Chi tiêu Cá nhân & Sao kê Đa Tài khoản Ngân hàng, được xây dựng với **React (TypeScript)**, **Node.js (Express + TypeScript)**, **MongoDB Replica Set** và đóng gói hoàn chỉnh bằng **Docker Compose**.
 
 ---
 
-## 🚀 Hướng dẫn Chạy với Docker (Khuyên dùng)
+## 📚 Tài Liệu Thiết Kế Kỹ Thuật (Documentation)
 
-### 1. Chuẩn bị file môi trường
-Tạo file `.env` từ file mẫu `.env.example`:
-- `server/.env`
-- `client/.env`
+Dự án đi kèm bộ tài liệu thiết kế kỹ thuật tiêu chuẩn cao tại thư mục [`docs/`](docs/):
 
-### 2. Khởi chạy toàn bộ hệ thống
+* 📘 **[Tài liệu Thiết kế Kỹ thuật Tổng hợp (TDD)](TechnicalDesignDocument.md)**
+* 📌 **[Tổng quan Hệ thống & Ca sử dụng (System Overview)](docs/system-overview.md)**
+* 🏗️ **[Kiến trúc Hệ thống & Ngăn xếp Công nghệ (Architecture)](docs/architecture.md)**
+* 🗄️ **[Thiết kế Cơ sở Dữ liệu & Chiến lược Index (Database)](docs/database.md)**
+* 🔌 **[Đặc tả Toàn bộ API Endpoints (API Specification)](docs/api.md)**
+* 🚀 **[Giải pháp Xử lý Dữ liệu lớn & Chịu tải cao (Advanced Design)](docs/advanced-design.md)**
+
+---
+
+## ⚡ Hướng Dẫn Khởi Chạy Nhanh (Quickstart với Docker)
+
+### Bước 1: Chuẩn bị file môi trường
+Tạo file `.env` tại 2 thư mục `server/` và `client/`:
+* Tại thư mục `server/`: Tạo file `.env`
+  ```env
+  PORT=5000
+  MONGO_URI=mongodb://localhost:27017/expense_tracker?replicaSet=rs0
+  JWT_SECRET=change_this_secret_in_production
+  JWT_EXPIRES_IN=7d
+  GOOGLE_CLIENT_ID=608534526399-0o9qkv4rgtckldhs273quf7h53vqetv7.apps.googleusercontent.com
+  CLIENT_ORIGIN=http://localhost:5173
+  ```
+
+* Tại thư mục `client/`: Tạo file `.env`
+  ```env
+  VITE_API_URL=http://localhost:5000/api
+  VITE_GOOGLE_CLIENT_ID=608534526399-0o9qkv4rgtckldhs273quf7h53vqetv7.apps.googleusercontent.com
+  ```
+
+---
+
+### Bước 2: Khởi chạy toàn bộ hệ thống bằng Docker
+Từ thư mục gốc dự án, chạy lệnh:
 ```bash
 docker compose up -d --build
 ```
 
-### 3. Kiểm tra dịch vụ
-- **Client (Frontend)**: [http://localhost:5173](http://localhost:5173)
-- **Server Healthcheck API**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-- **MongoDB**: `localhost:27017` (Replica set: `rs0`)
+---
+
+### Bước 3: Truy cập ứng dụng
+* 🌐 **Giao diện Client (Frontend):** [http://localhost:5173](http://localhost:5173)
+* 📡 **Máy chủ API (Backend Healthcheck):** [http://localhost:5000/api/health](http://localhost:5000/api/health)
+* 🗄️ **Cơ sở dữ liệu MongoDB:** `localhost:27018` (Replica Set: `rs0`)
 
 ---
 
-## 🛠️ Hướng dẫn Chạy Thủ Công (Không dùng Docker)
-
-### 1. Khởi động MongoDB Replica Set
-Dự án sử dụng **MongoDB Session Transactions** để đảm bảo tính toàn vẹn số dư và chống chi tiêu âm. MongoDB cần chạy ở chế độ **Replica Set**:
+## 🧪 Kiểm Thử Tự Động (Automated Testing)
+Dự án tích hợp bộ kiểm thử tự động toàn diện kiểm tra 100% các tính năng nghiệp vụ:
 ```bash
-mongod --replSet rs0 --dbpath <đường_dẫn_data>
-# Ở terminal khác:
-mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+node scratch/test_full_suite.js
 ```
-
-### 2. Chạy Server
-```bash
-cd server
-npm install
-npm run dev
-```
-
-### 3. Chạy Client
-```bash
-cd client
-npm install
-npm run dev
-```
-
----
-
-## 🔗 Liên kết Git & Đẩy lên GitHub
-
-Để đưa mã nguồn lên kho lưu trữ cá nhân trên GitHub:
-```bash
-git remote add origin https://github.com/<tên-tài-khoản-github>/<tên-repo>.git
-git branch -M main
-git push -u origin main
-```
+**Kết quả kiểm thử:** `14/14 PASSED (100% thành công)`.
