@@ -2,21 +2,24 @@ import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { useNotification } from "../contexts/NotificationContext";
 import { BookOpen, Lock, ShieldCheck, FileSpreadsheet, CreditCard, Sun, Moon } from "lucide-react";
 
 export default function LoginPage() {
   const { loginWithIdToken, requiresWalletSetup } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { showError, showSuccess } = useNotification();
   const navigate = useNavigate();
 
   async function handleSuccess(cred: CredentialResponse) {
     if (!cred.credential) return;
     try {
       await loginWithIdToken(cred.credential);
+      showSuccess("Đăng nhập thành công!");
       navigate(requiresWalletSetup ? "/wallets/new" : "/", { replace: true });
     } catch (err) {
       console.error("Đăng nhập thất bại:", err);
-      alert("Đăng nhập thất bại, vui lòng thử lại.");
+      showError("Đăng nhập thất bại, vui lòng kiểm tra kết nối mạng.");
     }
   }
 
@@ -40,6 +43,7 @@ export default function LoginPage() {
 
       <div className="bento-card" style={{ maxWidth: 440, width: "100%", padding: 32, textAlign: "center" }}>
         
+        {/* Open Book Logo Badge */}
         <div style={{
           width: 56,
           height: 56,
@@ -56,7 +60,7 @@ export default function LoginPage() {
         </div>
 
         <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--primary)", marginBottom: 4 }}>
-          ExpenseBook
+          Expense Tracker
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
           Sổ tay quản lý thu chi cá nhân 
@@ -71,7 +75,7 @@ export default function LoginPage() {
             size="large"
             text="continue_with"
             onSuccess={handleSuccess}
-            onError={() => alert("Không thể đăng nhập bằng Google")}
+            onError={() => showError("Không thể kết nối với dịch vụ Google")}
           />
         </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { listTransactionsApi } from "../api/transaction";
 import { Transaction } from "../types/transaction";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle } from "lucide-react";
 
 function formatVnd(amount: number): string {
   return amount.toLocaleString("vi-VN") + " ₫";
@@ -27,26 +28,30 @@ export default function HistoryPage() {
     <div style={{ minHeight: "100vh", paddingBottom: 60 }}>
       <Navbar />
 
-      <main style={{ maxWidth: 1100, margin: "32px auto", padding: "0 24px" }}>
+      <main style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
         <div className="bento-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div className="card-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <div>
               <h1 style={{ fontSize: 20, fontWeight: 800 }}>Lịch Sử Toàn Bộ Giao Dịch</h1>
-              <p style={{ fontSize: 13, color: "#94a3b8" }}>Sắp xếp theo thứ tự thời gian mới nhất</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sắp xếp theo thực tế thời gian mới nhất</p>
             </div>
-            <span className="badge-income">Đồng bộ tức thì</span>
+            <span className="badge-income">
+              <CheckCircle size={13} />
+              <span>Đồng bộ thực</span>
+            </span>
           </div>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: "60px 0", color: "#64748b" }}>
+            <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)" }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
               Đang tải danh sách giao dịch...
             </div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 0", color: "#64748b" }}>
+            <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-dim)" }}>
               Chưa có giao dịch nào được ghi nhận trong hệ thống.
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {items.map((t) => {
                 const categoryName = typeof t.categoryId === "string" ? "Khác" : t.categoryId.name;
                 const isIncome = t.type === "income";
@@ -54,34 +59,46 @@ export default function HistoryPage() {
                 return (
                   <div
                     key={t._id}
+                    className="transaction-item"
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      padding: "14px 18px",
-                      borderRadius: 12,
-                      background: "rgba(15, 18, 29, 0.5)",
-                      border: "1px solid rgba(255, 255, 255, 0.04)"
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      background: "transparent",
+                      border: isIncome ? "1px solid var(--success)" : "1px solid var(--danger)"
                     }}
                   >
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>
-                        <span className={isIncome ? "badge-income" : "badge-expense"} style={{ marginRight: 10 }}>
-                          {isIncome ? "THU" : "CHI"}
-                        </span>
-                        {categoryName}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: isIncome ? "var(--success-bg)" : "var(--danger-bg)",
+                        color: isIncome ? "var(--success-text)" : "var(--danger-text)",
+                      }}>
+                        {isIncome ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                        {new Date(t.date).toLocaleDateString("vi-VN")}
-                        {t.note ? ` · ${t.note}` : ""}
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
+                          {categoryName}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                          {new Date(t.date).toLocaleDateString("vi-VN")}
+                          {t.note ? ` · ${t.note}` : ""}
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: "right" }}>
-                      <div className="font-mono" style={{ fontWeight: 700, fontSize: 16, color: isIncome ? "#34d399" : "#fb7185" }}>
+                    <div className="transaction-item-right" style={{ textAlign: "right" }}>
+                      <div className="font-mono" style={{ fontWeight: 800, fontSize: 15, color: isIncome ? "var(--success-text)" : "var(--danger-text)" }}>
                         {isIncome ? "+" : "-"}{formatVnd(t.amount)}
                       </div>
-                      <div className="font-mono" style={{ fontSize: 12, color: "#64748b" }}>
+                      <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
                         Số dư sau GD: {formatVnd(t.balanceAfter)}
                       </div>
                     </div>
@@ -89,7 +106,7 @@ export default function HistoryPage() {
                 );
               })}
 
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 24 }}>
+              <div className="pagination-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 20 }}>
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
@@ -98,7 +115,7 @@ export default function HistoryPage() {
                 >
                   ← Trang trước
                 </button>
-                <span className="font-mono" style={{ fontSize: 13, color: "#94a3b8" }}>
+                <span className="font-mono pagination-text" style={{ fontSize: 13, color: "var(--text-muted)" }}>
                   Trang {page} / {totalPages || 1}
                 </span>
                 <button

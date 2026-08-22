@@ -4,12 +4,14 @@ import { listWalletsApi } from "../api/wallet";
 import { getWalletStatementApi, downloadStatementFile, WalletStatementResult } from "../api/report";
 import { Wallet } from "../types/wallet";
 import { FileSpreadsheet, FileText, ArrowDownLeft, ArrowUpRight, Search } from "lucide-react";
+import { useNotification } from "../contexts/NotificationContext";
 
 function formatVnd(amount: number): string {
   return amount.toLocaleString("vi-VN") + " ₫";
 }
 
 export default function StatementPage() {
+  const { showSuccess, showError } = useNotification();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [walletId, setWalletId] = useState("");
   const [from, setFrom] = useState("");
@@ -46,8 +48,9 @@ export default function StatementPage() {
     setExporting(format);
     try {
       await downloadStatementFile(format, { walletId, from: from || undefined, to: to || undefined });
+      showSuccess(`Đã tải xuống file ${format.toUpperCase()} thành công.`);
     } catch (err) {
-      alert("Xuất file thất bại.");
+      showError("Xuất file sao kê thất bại, vui lòng thử lại.");
     } finally {
       setExporting(null);
     }
@@ -148,9 +151,9 @@ export default function StatementPage() {
                           justifyContent: "space-between",
                           alignItems: "center",
                           padding: "10px 14px",
-                          borderRadius: 8,
-                          background: "var(--bg-input)",
-                          border: "1px solid var(--border-subtle)"
+                          borderRadius: 10,
+                          background: "transparent",
+                          border: isIncome ? "1px solid var(--success)" : "1px solid var(--danger)"
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -167,13 +170,10 @@ export default function StatementPage() {
                             {isIncome ? <ArrowDownLeft size={15} /> : <ArrowUpRight size={15} />}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>
-                              <span className={isIncome ? "badge-income" : "badge-expense"} style={{ marginRight: 6, fontSize: 11, padding: "2px 6px" }}>
-                                {isIncome ? "THU" : "CHI"}
-                              </span>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
                               {categoryName}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                               {new Date(t.date).toLocaleDateString("vi-VN")}
                               {t.note ? ` · ${t.note}` : ""}
                             </div>

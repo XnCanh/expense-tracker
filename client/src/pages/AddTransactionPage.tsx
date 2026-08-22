@@ -7,6 +7,7 @@ import { createTransactionApi } from "../api/transaction";
 import { Wallet } from "../types/wallet";
 import { Category, CategoryType } from "../types/category";
 import { ArrowUpRight, ArrowDownLeft, AlertCircle } from "lucide-react";
+import { useNotification } from "../contexts/NotificationContext";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function formatVnd(amount: number): string {
@@ -14,6 +15,7 @@ function formatVnd(amount: number): string {
 }
 
 export default function AddTransactionPage() {
+  const { showSuccess } = useNotification();
   const navigate = useNavigate();
 
   const [type, setType] = useState<CategoryType>("expense");
@@ -65,6 +67,7 @@ export default function AddTransactionPage() {
         date,
         note: note.trim() || undefined,
       });
+      showSuccess("Đã lưu giao dịch thành công.");
       navigate("/", { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Ghi chép giao dịch thất bại.");

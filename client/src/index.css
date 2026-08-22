@@ -173,6 +173,9 @@ body {
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .badge-expense {
@@ -216,15 +219,85 @@ select.form-control option {
 }
 
 @media (max-width: 640px) {
-  .bento-card { padding: 14px; border-radius: 12px; }
+  /* Khung Card */
+  .bento-card {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Tiêu đề & Văn bản chống nhảy chữ trên Mobile */
+  h1 {
+    font-size: 17px !important;
+    line-height: 1.35 !important;
+    letter-spacing: -0.01em !important;
+  }
+  h2 {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+  }
+  p {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+
+  /* Header card trên mobile tự xuống dòng badge nếu chật */
+  .card-header-flex,
+  .bento-card > div:first-child {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Badge & Tag */
+  .badge-income,
+  .badge-expense {
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Navbar */
   .navbar-container { padding: 10px 14px !important; }
   .navbar-links { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .navbar-links .btn { padding: 6px 10px !important; font-size: 12px !important; }
+
+  /* Báo cáo & Lưới */
   .statement-summary-grid { grid-template-columns: 1fr !important; }
   .statement-filter-grid { grid-template-columns: 1fr !important; }
   .form-grid-2 { grid-template-columns: 1fr !important; }
-  .transaction-item { flex-direction: column; align-items: flex-start !important; gap: 6px; }
-  .transaction-item-right { width: 100%; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+
+  /* Dòng Giao dịch */
+  .transaction-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    padding: 10px 12px !important;
+  }
+  .transaction-item-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 6px;
+  }
+
+  /* Phân trang chống rớt chữ Trang 1 / 1 */
+  .pagination-container {
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+  .pagination-container .btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+  }
+  .pagination-text {
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+  }
 }
 
 /* ===================================================
@@ -308,5 +381,39 @@ select.form-control option {
     transform: translateY(-10px);
     font-weight: 800;
     color: var(--primary);
+  }
+}
+
+/* ===================================================
+   POPUP & TOAST ANIMATIONS
+   =================================================== */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(50px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleIn {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }

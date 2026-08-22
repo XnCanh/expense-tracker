@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { listWalletsApi } from "../api/wallet";
+import { listWalletsApi, deleteWalletApi } from "../api/wallet";
 import { listTransactionsApi } from "../api/transaction";
 import { Wallet } from "../types/wallet";
 import { Transaction } from "../types/transaction";
-import { PlusCircle, Wallet as WalletIcon, FileSpreadsheet, CreditCard, ArrowDownLeft, ArrowUpRight, CheckCircle } from "lucide-react";
+import { useNotification } from "../contexts/NotificationContext";
+import { PlusCircle, Wallet as WalletIcon, FileSpreadsheet, CreditCard, ArrowDownLeft, ArrowUpRight, CheckCircle, Trash2 } from "lucide-react";
 
 function formatVnd(amount: number): string {
   return amount.toLocaleString("vi-VN") + " ₫";
@@ -13,27 +14,54 @@ function formatVnd(amount: number): string {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { confirmModal, showSuccess, showError } = useNotification();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      const res = await listWalletsApi();
+      if (res.wallets.length === 0) {
+        navigate("/wallets/new", { replace: true });
+        return;
+      }
+      setWallets(res.wallets);
+      setTotalBalance(res.totalBalance);
+      const txRes = await listTransactionsApi({ limit: 8 });
+      if (txRes) setTransactions(txRes.items);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    listWalletsApi()
-      .then((res) => {
-        if (res.wallets.length === 0) {
-          navigate("/wallets/new", { replace: true });
-          return;
-        }
-        setWallets(res.wallets);
-        setTotalBalance(res.totalBalance);
-        return listTransactionsApi({ limit: 8 });
-      })
-      .then((res) => {
-        if (res) setTransactions(res.items);
-      })
-      .finally(() => setLoading(false));
+    loadData();
   }, [navigate]);
+
+  const handleDeleteWallet = async (w: Wallet) => {
+    const isConfirmed = await confirmModal({
+      title: "Xác nhận gỡ ví",
+      message: `Bạn có chắc chắn muốn gỡ ví "${w.name}" không?\nLưu ý: Tất cả các giao dịch liên quan đến ví này sẽ được dọn sạch.`,
+      confirmText: "Gỡ Ví",
+      cancelText: "Hủy",
+      isDanger: true,
+    });
+    if (!isConfirmed) return;
+
+    setDeletingId(w._id);
+    try {
+      await deleteWalletApi(w._id);
+      showSuccess(`Đã gỡ ví "${w.name}" thành công.`);
+      await loadData();
+    } catch (err) {
+      showError("Gỡ ví thất bại, vui lòng thử lại.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", paddingBottom: 60 }}>
@@ -56,8 +84,8 @@ export default function HomePage() {
                 border: "1px solid var(--border-subtle)",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                    Tổng Số Dư Khả Dụng
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>
+                    Số Dư Khả Dụng
                   </span>
                   <span className="badge-income">
                     <CheckCircle size={13} />
@@ -81,7 +109,7 @@ export default function HomePage() {
 
               <div className="bento-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Số lượng Ví</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>Số lượng Ví</div>
                   <div className="font-mono" style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: "var(--primary)" }}>
                     {wallets.length} <span style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 500 }}>tài khoản</span>
                   </div>
@@ -103,15 +131,37 @@ export default function HomePage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                 {wallets.map((w) => (
-                  <div key={w._id} className="bento-card" style={{ padding: 16 }}>
+                  <div key={w._id} className="bento-card" style={{ padding: 16, position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>{w.name}</div>
+                      <div style={{ paddingRight: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{w.name}</span>
+                        </div>
                         <div style={{ fontSize: 12, color: "var(--primary)", marginTop: 2 }}>
                           {w.bankName ? `Ngân hàng: ${w.bankName}` : "Ví tiền mặt"}
                         </div>
                       </div>
-                      <CreditCard size={20} color="var(--primary)" />
+                      
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <CreditCard size={18} color="var(--primary)" />
+                        {/* Nút Gỡ Ví */}
+                        <button
+                          onClick={() => handleDeleteWallet(w)}
+                          disabled={deletingId === w._id}
+                          className="btn btn-secondary"
+                          title="Gỡ ví này"
+                          style={{
+                            padding: "4px 6px",
+                            borderRadius: 6,
+                            color: "var(--danger-text)",
+                            border: "1px solid var(--border-subtle)",
+                            background: "transparent",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Trash2 size={14} color="var(--danger)" />
+                        </button>
+                      </div>
                     </div>
 
                     {w.accountNumber && (
@@ -159,9 +209,9 @@ export default function HomePage() {
                           justifyContent: "space-between",
                           alignItems: "center",
                           padding: "12px 14px",
-                          borderRadius: 8,
-                          background: "var(--bg-input)",
-                          border: "1px solid var(--border-subtle)"
+                          borderRadius: 10,
+                          background: "transparent",
+                          border: isIncome ? "1px solid var(--success)" : "1px solid var(--danger)"
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -178,8 +228,8 @@ export default function HomePage() {
                             {isIncome ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 14 }}>{categoryName}</div>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>{categoryName}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                               {new Date(t.date).toLocaleDateString("vi-VN")}
                               {t.note ? ` · ${t.note}` : ""}
                             </div>

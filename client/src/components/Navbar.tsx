@@ -50,7 +50,7 @@ export default function Navbar() {
               <BookOpen size={18} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.02em", color: "var(--primary)" }}>ExpenseBook</div>
+              <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.02em", color: "var(--primary)" }}>Expense Tracker</div>
             </div>
           </Link>
 
@@ -64,7 +64,7 @@ export default function Navbar() {
                   to={link.path}
                   className="btn"
                   style={{
-                    background: isActive ? "var(--primary-bg)" : "transparent",
+                    // background: isActive ? "var(--primary-bg)" : "transparent",
                     color: isActive ? "var(--primary)" : "var(--text-muted)",
                     borderBottom: isActive ? "3px solid var(--primary)" : "3px solid transparent",
                     borderRadius: isActive ? "8px 8px 0 0" : "8px",
@@ -92,7 +92,6 @@ export default function Navbar() {
               title={theme === "dark" ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
             >
               {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-              <span className="theme-btn-text" style={{ fontSize: 12 }}>{theme === "dark" ? "Sáng" : "Tối"}</span>
             </button>
 
             {user?.avatarUrl ? (
@@ -119,7 +118,6 @@ export default function Navbar() {
             )}
             <button onClick={logout} className="btn btn-secondary" style={{ padding: "6px 10px", fontSize: 12, borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 4 }}>
               <LogOut size={14} />
-              <span className="logout-btn-text">Thoát</span>
             </button>
           </div>
         </div>

@@ -72,11 +72,20 @@ export async function updateWallet(
 // Xóa ví (chỉ cho phép ví không có giao dịch)
 export async function deleteWallet(userId: Types.ObjectId, walletId: string): Promise<void> {
   const wallet = await getWalletOrThrow(userId, walletId);
-  const txCount = await Transaction.countDocuments({ walletId: wallet._id });
-  if (txCount > 0) {
-    throw new AppError("Không thể xóa ví đã có giao dịch. Hãy lưu trữ (archive) thay vì xóa.", 400);
+  const session = await Wallet.startSession();
+  try {
+    session.startTransaction();
+    // Xóa tất cả các giao dịch liên quan đến ví này
+    await Transaction.deleteMany({ walletId: wallet._id, userId }, { session });
+    // Xóa ví
+    await wallet.deleteOne({ session });
+    await session.commitTransaction();
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
   }
-  await wallet.deleteOne();
 }
 
 // Lấy tổng số dư của tất cả các ví thuộc user
