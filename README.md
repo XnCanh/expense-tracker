@@ -21,21 +21,21 @@ Dự án đi kèm bộ tài liệu thiết kế kỹ thuật tiêu chuẩn cao t
 
 ### Bước 1: Chuẩn bị file môi trường
 Tạo file `.env` tại 2 thư mục `server/` và `client/`:
-* Tại thư mục `server/`: Tạo file `.env`
-  ```env
-  PORT=5000
-  MONGO_URI=mongodb://localhost:27017/expense_tracker?replicaSet=rs0
-  JWT_SECRET=change_this_secret_in_production
-  JWT_EXPIRES_IN=7d
-  GOOGLE_CLIENT_ID=608534526399-0o9qkv4rgtckldhs273quf7h53vqetv7.apps.googleusercontent.com
-  CLIENT_ORIGIN=http://localhost:5173
+Sao chép nhanh từ file mẫu `.env.example` có sẵn:
+
+* **Trên Linux / macOS:**
+  ```bash
+  cp server/.env.example server/.env
+  cp client/.env.example client/.env
   ```
 
-* Tại thư mục `client/`: Tạo file `.env`
-  ```env
-  VITE_API_URL=http://localhost:5000/api
-  VITE_GOOGLE_CLIENT_ID=608534526399-0o9qkv4rgtckldhs273quf7h53vqetv7.apps.googleusercontent.com
+* **Trên Windows (PowerShell):**
+  ```powershell
+  Copy-Item server/.env.example server/.env
+  Copy-Item client/.env.example client/.env
   ```
+
+*(Sau đó điền `GOOGLE_CLIENT_ID` của bạn vào 2 file `.env` trên nếu cần thay đổi tài khoản Google Cloud).*
 
 ---
 

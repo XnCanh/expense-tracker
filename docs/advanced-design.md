@@ -33,9 +33,9 @@ Việc nạp 1.000.000 dòng dữ liệu vào mảng JavaScript thông thường
 ### Giải pháp kỹ thuật:
 ```mermaid
 flowchart LR
-    MongoDB[(MongoDB Cursor)] -- "Batch Stream Data" --> NodeEngine[Node.js Stream Engine]
-    NodeEngine -- "exceljs.stream.xlsx / pdfkit" --> ResStream[HTTP Response Pipe (Chunked Transfer)]
-    ResStream -- "Direct Download Stream" --> Browser[User Browser]
+    MongoDB[("MongoDB Cursor")] -- "Batch Stream Data" --> NodeEngine["Node.js Stream Engine"]
+    NodeEngine -- "exceljs.stream.xlsx / pdfkit" --> ResStream["HTTP Response Pipe (Chunked Transfer)"]
+    ResStream -- "Direct Download Stream" --> Browser["User Browser"]
 ```
 
 1. **MongoDB Cursor Streaming:**
@@ -58,18 +58,18 @@ flowchart LR
 
 ```mermaid
 graph TD
-    ClientApps[Mobile & Web Clients] --> LB[Load Balancer: Nginx / AWS ALB]
-    LB --> Node1[Server Instance 1]
-    LB --> Node2[Server Instance 2]
-    LB --> NodeN[Server Instance N (Horizontal Auto-Scaling)]
+    ClientApps["Mobile & Web Clients"] --> LB["Load Balancer: Nginx / AWS ALB"]
+    LB --> Node1["Server Instance 1"]
+    LB --> Node2["Server Instance 2"]
+    LB --> NodeN["Server Instance N (Horizontal Auto-Scaling)"]
 
-    Node1 --> MongoRouter[MongoDB Mongos Query Router]
+    Node1 --> MongoRouter["MongoDB Mongos Query Router"]
     Node2 --> MongoRouter
     NodeN --> MongoRouter
 
-    MongoRouter --> Shard1[(Shard 1: User Partition A-H)]
-    MongoRouter --> Shard2[(Shard 2: User Partition I-P)]
-    MongoRouter --> Shard3[(Shard 3: User Partition Q-Z)]
+    MongoRouter --> Shard1[("Shard 1: User Partition A-H")]
+    MongoRouter --> Shard2[("Shard 2: User Partition I-P")]
+    MongoRouter --> Shard3[("Shard 3: User Partition Q-Z")]
 ```
 
 1. **Stateless JWT Architecture (Phi trạng thái):**

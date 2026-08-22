@@ -8,10 +8,10 @@ Tài liệu này mô tả chi tiết kiến trúc kỹ thuật tổng thể, ng�
 
 ```mermaid
 graph TD
-    Client[Client App: React + TypeScript + Vite<br/>Port 5173]
-    Server[Backend API: Node.js + Express + TypeScript<br/>Port 5000]
-    DB[(Database: MongoDB 7.0<br/>Replica Set rs0 - Port 27018)]
-    Google[Google OAuth 2.0 Identity Server]
+    Client["Client App: React + TypeScript + Vite (Port 5173)"]
+    Server["Backend API: Node.js + Express + TypeScript (Port 5000)"]
+    DB[("Database: MongoDB 7.0 (Replica Set rs0 - Port 27018)")]
+    Google["Google OAuth 2.0 Identity Server"]
 
     Client -- "1. Google Sign-In (idToken)" --> Google
     Client -- "2. POST /api/auth/google (idToken)" --> Server

@@ -18,15 +18,15 @@ Tài liệu này mô tả tổng quan về mặt nghiệp vụ của **Hệ th�
 
 ```mermaid
 flowchart TD
-    User((Người dùng)) --> UC1[Đăng nhập bằng Google OAuth]
-    User --> UC2[Khởi tạo Ví đầu tiên bắt buộc]
-    User --> UC3[Quản lý Đa Ví / Tài khoản Ngân hàng]
-    User --> UC4[Ghi chép Thu / Chi tức thời]
-    User --> UC5[Xem Lịch sử Giao dịch theo thời gian]
-    User --> UC6[Tra cứu Sao kê Kỳ tài chính]
-    User --> UC7[Xuất Báo cáo Excel .xlsx Stream]
-    User --> UC8[Xuất Báo cáo PDF .pdf Unicode]
-    User --> UC9[Gỡ ví & Cascade Deletion]
+    User((Người dùng)) --> UC1["Đăng nhập bằng Google OAuth"]
+    User --> UC2["Khởi tạo Ví đầu tiên bắt buộc"]
+    User --> UC3["Quản lý Đa Ví / Tài khoản Ngân hàng"]
+    User --> UC4["Ghi chép Thu / Chi tức thời"]
+    User --> UC5["Xem Lịch sử Giao dịch theo thời gian"]
+    User --> UC6["Tra cứu Sao kê Kỳ tài chính"]
+    User --> UC7["Xuất Báo cáo Excel .xlsx Stream"]
+    User --> UC8["Xuất Báo cáo PDF .pdf Unicode"]
+    User --> UC9["Gỡ ví & Cascade Deletion"]
 ```
 
 ---
