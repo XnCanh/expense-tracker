@@ -218,7 +218,7 @@ export async function exportWalletStatementExcel(
       type: tx.type === "income" ? "Thu" : "Chi",
       category: tx.categoryId?.name ?? "Khác",
       amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: tx.balanceAfter,
+      balanceAfter: tx.balanceAfter ?? 0,
       note: tx.note ?? "",
     });
   }
@@ -363,7 +363,7 @@ export async function exportWalletStatementPdf(
       type: tx.type === "income" ? "Thu" : "Chi",
       category: tx.categoryId?.name ?? "Khác",
       amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: tx.balanceAfter,
+      balanceAfter: tx.balanceAfter ?? 0,
       note: tx.note ?? "",
     });
   }

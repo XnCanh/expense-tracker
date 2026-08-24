@@ -1,4 +1,4 @@
-﻿import { Schema, model, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
 export type TransactionType = "income" | "expense";
 
@@ -11,8 +11,9 @@ export interface ITransaction extends Document {
   categoryId: Types.ObjectId;
   date: Date;
   note?: string;
-  balanceAfter: number;
+  balanceAfter?: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const transactionSchema = new Schema<ITransaction>(
@@ -54,18 +55,17 @@ const transactionSchema = new Schema<ITransaction>(
     },
     balanceAfter: {
       type: Number,
-      required: true,
     },
   },
   {
-    timestamps: { createdAt: true, updatedAt: false },
+    timestamps: true,
   }
 );
 
 // Index phục vụ lọc sao kê theo ví + khoảng thời gian (sắp xếp mới nhất đến cũ nhất)
-transactionSchema.index({ userId: 1, walletId: 1, date: -1 });
+transactionSchema.index({ userId: 1, walletId: 1, date: -1, _id: -1 });
 
 // Index phục vụ xem lịch sử toàn bộ giao dịch của người dùng
-transactionSchema.index({ userId: 1, date: -1 });
+transactionSchema.index({ userId: 1, date: -1, _id: -1 });
 
 export const Transaction = model<ITransaction>("Transaction", transactionSchema);

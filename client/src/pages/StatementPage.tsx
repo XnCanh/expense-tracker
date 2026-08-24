@@ -254,7 +254,7 @@ export default function StatementPage() {
                             {isIncome ? "+" : "-"}{formatVnd(t.amount)}
                           </div>
                           <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                            Sau GD: {formatVnd(t.balanceAfter)}
+                            Sau GD: {formatVnd(t.balanceAfter ?? 0)}
                           </div>
                         </div>
                       </div>

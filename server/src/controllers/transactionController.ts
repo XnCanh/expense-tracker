@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Types } from "mongoose";
 import { z } from "zod";
-import { createTransaction, listTransactions } from "../services/transactionService";
+import { createTransaction, listTransactions, updateTransaction, deleteTransaction } from "../services/transactionService";
 import { AppError } from "../middlewares/errorHandler";
 
 function getUserId(req: Request): Types.ObjectId {
@@ -11,11 +11,21 @@ function getUserId(req: Request): Types.ObjectId {
 
 // createTransactionSchema - Tạo giao dịch
 const createTransactionSchema = z.object({
-  walletId: z.string().min(1),
+  walletId: z.string().min(1, "Vui lòng chọn ví"),
   type: z.enum(["income", "expense"]),
   amount: z.number().positive("Số tiền phải lớn hơn 0"),
-  categoryId: z.string().min(1),
+  categoryId: z.string().min(1, "Vui lòng chọn danh mục"),
   date: z.coerce.date(),
+  note: z.string().optional(),
+});
+
+// updateTransactionSchema - Cập nhật giao dịch
+const updateTransactionSchema = z.object({
+  walletId: z.string().min(1).optional(),
+  type: z.enum(["income", "expense"]).optional(),
+  amount: z.number().positive("Số tiền phải lớn hơn 0").optional(),
+  categoryId: z.string().min(1).optional(),
+  date: z.coerce.date().optional(),
   note: z.string().optional(),
 });
 
@@ -31,6 +41,31 @@ export async function createTransactionHandler(req: Request, res: Response, next
   }
 }
 
+// updateTransactionHandler - Cập nhật giao dịch
+export async function updateTransactionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const input = updateTransactionSchema.parse(req.body);
+    const transaction = await updateTransaction(userId, id, input);
+    res.json({ transaction, message: "Đã cập nhật giao dịch thành công" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// deleteTransactionHandler - Xóa giao dịch
+export async function deleteTransactionHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const result = await deleteTransaction(userId, id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // listTransactionsHandler - Lấy danh sách giao dịch
 const listQuerySchema = z.object({
   walletId: z.string().optional(),
@@ -40,7 +75,6 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().optional(),
 });
 
-// listTransactionsHandler - Lấy danh sách giao dịch
 export async function listTransactionsHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = getUserId(req);

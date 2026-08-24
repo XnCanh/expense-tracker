@@ -107,3 +107,15 @@ try {
   session.endSession();
 }
 ```
+
+
+---
+
+## 🔒 Cơ chế Cập nhật / Xóa Giao dịch & Chống Chi Âm Toàn Diện
+
+Khi người dùng thực hiện sửa hoặc xóa giao dịch (kể cả các giao dịch trong quá khứ):
+1. **Thuật toán Reconcile Số dư Nguyên tử:**
+   - Khi sửa: $\Delta = \text{Hiệu ứng mới} - \text{Hiệu ứng cũ}$.
+   - Nếu $\Delta < 0$ (trừ thêm tiền từ ví): Kiểm tra $\text{currentBalance} \ge |\Delta|$ trước khi cập nhật.
+   - Khi chuyển ví: Hoàn tác số dư trên ví cũ và áp dụng số dư lên ví mới trong cùng 1 MongoDB ACID Session.
+2. **Loại bỏ phụ thuộc Snapshot cứng:** `balanceAfter` được sinh động theo dòng thời gian, đảm bảo lịch sử và sao kê luôn chính xác 100% khi có chỉnh sửa dữ liệu trong quá khứ.

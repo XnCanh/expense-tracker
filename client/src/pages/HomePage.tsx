@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { listWalletsApi, deleteWalletApi } from "../api/wallet";
-import { listTransactionsApi } from "../api/transaction";
+import { listTransactionsApi, deleteTransactionApi } from "../api/transaction";
+import EditTransactionModal from "../components/EditTransactionModal";
 import { Wallet } from "../types/wallet";
 import { Transaction } from "../types/transaction";
 import { useNotification } from "../contexts/NotificationContext";
@@ -20,6 +21,7 @@ export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const loadData = async () => {
     try {
@@ -40,6 +42,26 @@ export default function HomePage() {
   useEffect(() => {
     loadData();
   }, [navigate]);
+
+      const handleDeleteTx = async (t: Transaction) => {
+    const isIncome = t.type === "income";
+    const confirmed = await confirmModal({
+      title: "Xác nhận xóa giao dịch",
+      message: `Bạn có chắc chắn muốn xóa khoản ${isIncome ? "thu" : "chi"} ${formatVnd(t.amount)} này không? Số dư ví sẽ được tự động hoàn tác.`,
+      confirmText: "Xác nhận xóa",
+      isDanger: true,
+    });
+
+    if (confirmed) {
+      try {
+        await deleteTransactionApi(t._id);
+        showSuccess("Đã xóa giao dịch và hoàn tác số dư thành công!");
+        loadData();
+      } catch (err: any) {
+        showError(err?.response?.data?.message || err?.message || "Xóa giao dịch thất bại");
+      }
+    }
+  };
 
   const handleDeleteWallet = async (w: Wallet) => {
     const isConfirmed = await confirmModal({
@@ -280,7 +302,7 @@ export default function HomePage() {
                             {isIncome ? "+" : "-"}{formatVnd(t.amount)}
                           </div>
                           <div className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                            Số dư sau GD: {formatVnd(t.balanceAfter)}
+                            Số dư sau GD: {formatVnd(t.balanceAfter ?? 0)}
                           </div>
                         </div>
                       </div>
@@ -292,7 +314,14 @@ export default function HomePage() {
 
           </div>
         )}
-      </main>
+        {/* Modal Chỉnh sửa giao dịch */}
+      <EditTransactionModal
+        isOpen={editingTx !== null}
+        transaction={editingTx}
+        onClose={() => setEditingTx(null)}
+        onSuccess={loadData}
+      />
+    </main>
     </div>
   );
 }

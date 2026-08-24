@@ -2,14 +2,15 @@ import { CategoryType } from "./category";
 
 export interface Transaction {
   _id: string;
-  walletId: string;
+  walletId: { _id: string; name: string; bankName?: string } | string;
   type: CategoryType;
   amount: number;
   categoryId: { _id: string; name: string; type: CategoryType } | string;
   date: string;
   note?: string;
-  balanceAfter: number;
+  balanceAfter?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreateTransactionPayload {
@@ -18,6 +19,15 @@ export interface CreateTransactionPayload {
   amount: number;
   categoryId: string;
   date: string;
+  note?: string;
+}
+
+export interface UpdateTransactionPayload {
+  walletId?: string;
+  type?: CategoryType;
+  amount?: number;
+  categoryId?: string;
+  date?: string;
   note?: string;
 }
 
