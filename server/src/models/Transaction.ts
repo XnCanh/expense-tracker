@@ -11,7 +11,6 @@ export interface ITransaction extends Document {
   categoryId: Types.ObjectId;
   date: Date;
   note?: string;
-  balanceAfter?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,19 +52,16 @@ const transactionSchema = new Schema<ITransaction>(
       type: String,
       trim: true,
     },
-    balanceAfter: {
-      type: Number,
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Index phục vụ lọc sao kê theo ví + khoảng thời gian (sắp xếp mới nhất đến cũ nhất)
+// Compound Index phục vụ lọc sao kê & xuất báo cáo stream theo ví + thời gian
 transactionSchema.index({ userId: 1, walletId: 1, date: -1, _id: -1 });
 
-// Index phục vụ xem lịch sử toàn bộ giao dịch của người dùng
+// Compound Index phục vụ lọc lịch sử toàn bộ giao dịch người dùng
 transactionSchema.index({ userId: 1, date: -1, _id: -1 });
 
 export const Transaction = model<ITransaction>("Transaction", transactionSchema);

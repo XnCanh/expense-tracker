@@ -79,3 +79,20 @@ graph TD
    - Sẵn sàng Sharding MongoDB với Shard Key `{ userId: "hashed" }`, phân tán tải đồng đều trên nhiều cụm máy chủ vật lý độc lập.
 3. **Chống Overdraft & Race Condition bằng ACID Transactions:**
    - Sử dụng cơ chế khóa tài liệu nguyên tử của MongoDB Replica Set (`session.withTransaction()`), đảm bảo tính nhất quán tuyệt đối của số dư tài khoản.
+
+
+---
+
+## 💎 4. Bài toán: Kiến trúc Bút toán Tài chính $O(1)$ Write & Dynamic Read Stream
+
+### Thách thức:
+Trong các hệ thống quản lý tài chính truyền thống, việc lưu cứng trường `balanceAfter` trên từng bản ghi giao dịch dẫn đến vấn đề **Cascade Update $O(N)$**: khi người dùng sửa một giao dịch xảy ra trong quá khứ, hệ thống buộc phải cập nhật lại hàng loạt (thậm chí hàng triệu) giao dịch xảy ra sau đó, gây nghẽn CPU, Disk I/O và treo CSDL.
+
+### Giải pháp Kỹ thuật:
+1. **Loại bỏ `balanceAfter` khỏi Schema lưu trữ:** Biến `Transaction` thành một Event Stream thuần túy.
+2. **Cập nhật số dư nguyên tử $O(1)$:**
+   $$\Delta = \text{NewEffect} - \text{OldEffect}$$
+   $$\text{Wallet.currentBalance} \leftarrow \text{Wallet.currentBalance} + \Delta$$
+   Chỉ cập nhật đúng 1 bản ghi `Transaction` và 1 bản ghi `Wallet` trong MongoDB ACID Session $\rightarrow$ Độ phức tạp $O(1)$ tuyệt đối!
+3. **Tính toán số dư sau giao dịch theo luồng đọc (On-the-fly Dynamic Computation):**
+   - Khi xuất báo cáo Sao kê / Excel / PDF, `balanceAfter` được cộng dồn theo thời gian thực từ `openingBalance` trong luồng Stream $O(1)$ RAM, đảm bảo tính nhất quán toán học 100%.

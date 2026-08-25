@@ -14,7 +14,7 @@ export interface CreateTransactionInput {
   note?: string;
 }
 
-// Interface cho input cập nhật giao dịch (Không cho phép đổi ví)
+// Interface cho input cập nhật giao dịch
 export interface UpdateTransactionInput {
   type?: TransactionType;
   amount?: number;
@@ -23,64 +23,11 @@ export interface UpdateTransactionInput {
   note?: string;
 }
 
-/*
- Thuật toán Đồng bộ Dòng thời gian Ví (Timeline Recalculation)
- Quét toàn bộ giao dịch của ví theo trình tự thời gian tăng dần { date: 1, createdAt: 1, _id: 1 }
- Bắt đầu từ initialBalance:
- 1. Tính toán lại chính xác balanceAfter cho từng giao dịch.
- 2. Đảm bảo số dư không bao giờ bị âm tại bất kỳ mốc thời gian nào (Timeline Non-Negative Invariant).
- 3. Cập nhật số dư cuối cùng cho Wallet.currentBalance.
+/**
+ * TẠO GIAO DỊCH MỚI - Độ phức tạp O(1) Ghi
+ * 1. Cập nhật số dư Wallet.currentBalance bằng toán tử $inc nguyên tử
+ * 2. Ghi 1 document Transaction mới
  */
-export async function recalculateWalletTimeline(
-  userId: Types.ObjectId,
-  walletId: Types.ObjectId,
-  session: mongoose.ClientSession
-): Promise<number> {
-  const wallet = await Wallet.findOne({ _id: walletId, userId }).session(session);
-  if (!wallet) {
-    throw new AppError("Không tìm thấy ví", 404);
-  }
-
-  // Lấy toàn bộ giao dịch của ví này, sắp xếp tăng dần theo dòng thời gian thực tế
-  const transactions = await Transaction.find({ walletId, userId })
-    .sort({ date: 1, createdAt: 1, _id: 1 })
-    .session(session);
-
-  let running = wallet.initialBalance;
-  const bulkOps = [];
-
-  for (const tx of transactions) {
-    running += tx.type === "income" ? tx.amount : -tx.amount;
-
-    // Kiểm tra chống chi âm tại từng mốc thời gian trong quá khứ và hiện tại
-    if (running < 0) {
-      const dateStr = new Date(tx.date).toLocaleDateString("vi-VN");
-      throw new AppError(
-        `Không thể thực hiện vì vào ngày ${dateStr}, số dư ví sẽ bị âm (${running.toLocaleString("vi-VN")} ₫)`,
-        400
-      );
-    }
-
-    bulkOps.push({
-      updateOne: {
-        filter: { _id: tx._id },
-        update: { $set: { balanceAfter: running } },
-      },
-    });
-  }
-
-  if (bulkOps.length > 0) {
-    await Transaction.bulkWrite(bulkOps, { session });
-  }
-
-  // Cập nhật số dư hiện tại cuối cùng của Ví
-  wallet.currentBalance = running;
-  await wallet.save({ session });
-
-  return running;
-}
-
-// Tạo giao dịch mới (Tính toán lại timeline và chống chi âm)
 export async function createTransaction(
   userId: Types.ObjectId,
   input: CreateTransactionInput
@@ -100,12 +47,25 @@ export async function createTransaction(
     let created!: ITransaction;
 
     await session.withTransaction(async () => {
-      const wallet = await Wallet.findOne({ _id: input.walletId, userId }).session(session);
-      if (!wallet) {
-        throw new AppError("Không tìm thấy ví", 404);
+      const delta = input.type === "income" ? input.amount : -input.amount;
+
+      const filter: Record<string, unknown> = { _id: input.walletId, userId };
+      if (input.type === "expense") {
+        filter.currentBalance = { $gte: input.amount };
       }
 
-      // Tạo transaction document mới
+      const wallet = await Wallet.findOneAndUpdate(
+        filter,
+        { $inc: { currentBalance: delta } },
+        { new: true, session }
+      );
+
+      if (!wallet) {
+        const exists = await Wallet.exists({ _id: input.walletId, userId }).session(session);
+        if (!exists) throw new AppError("Không tìm thấy ví", 404);
+        throw new AppError("Số dư trong ví không đủ để thực hiện giao dịch chi này", 400);
+      }
+
       const [tx] = await Transaction.create(
         [
           {
@@ -116,18 +76,12 @@ export async function createTransaction(
             categoryId: input.categoryId,
             date: input.date,
             note: input.note,
-            balanceAfter: 0, // Sẽ được đồng bộ chính xác ngay sau đây
           },
         ],
         { session }
       );
 
-      // Đồng bộ toàn bộ dòng thời gian của ví và kiểm tra tính toàn vẹn số dư
-      await recalculateWalletTimeline(userId, wallet._id, session);
-
-      // Lấy lại transaction đã được cập nhật balanceAfter chuẩn
-      const updated = await Transaction.findById(tx._id).session(session);
-      created = updated || tx;
+      created = tx;
     });
 
     return created;
@@ -136,7 +90,13 @@ export async function createTransaction(
   }
 }
 
-// Cập nhật giao dịch đã có (Sửa số tiền, loại Thu/Chi, Ngày tháng, Danh mục, Ghi chú)
+/**
+ * CẬP NHẬT GIAO DỊCH - Độ phức tạp O(1) Ghi Thuần Túy
+ * Không cascade update hay quét timeline.
+ * 1. Tính toán chênh lệch số dư ròng: Delta = NewEffect - OldEffect
+ * 2. Cập nhật số dư Wallet.currentBalance bằng toán tử $inc nguyên tử (O(1))
+ * 3. Cập nhật đúng 1 document Transaction được chỉ định (O(1))
+ */
 export async function updateTransaction(
   userId: Types.ObjectId,
   transactionId: string,
@@ -169,7 +129,28 @@ export async function updateTransaction(
       // Kiểm tra danh mục hợp lệ với loại mới
       await getValidCategoryOrThrow(userId, newCategoryId, newType);
 
-      // Cập nhật thông tin giao dịch
+      // Tính toán chênh lệch số dư ròng: Delta = NewEffect - OldEffect
+      const oldEffect = tx.type === "income" ? tx.amount : -tx.amount;
+      const newEffect = newType === "income" ? newAmount : -newAmount;
+      const netDelta = newEffect - oldEffect;
+
+      // Cập nhật số dư ví nguyên tử O(1)
+      const walletFilter: Record<string, unknown> = { _id: tx.walletId, userId };
+      if (netDelta < 0) {
+        walletFilter.currentBalance = { $gte: Math.abs(netDelta) };
+      }
+
+      const wallet = await Wallet.findOneAndUpdate(
+        walletFilter,
+        { $inc: { currentBalance: netDelta } },
+        { new: true, session }
+      );
+
+      if (!wallet) {
+        throw new AppError("Số dư trong ví không đủ để cập nhật giao dịch này (nguy cơ chi âm)", 400);
+      }
+
+      // Cập nhật đúng 1 document giao dịch duy nhất O(1)
       tx.type = newType;
       tx.amount = newAmount;
       tx.categoryId = new Types.ObjectId(newCategoryId);
@@ -177,16 +158,12 @@ export async function updateTransaction(
       tx.note = newNote;
       await tx.save({ session });
 
-      // Tính toán lại toàn bộ dòng thời gian của ví từ quá khứ đến hiện tại
-      await recalculateWalletTimeline(userId, tx.walletId, session);
-
-      // Lấy lại transaction sau khi đã đồng bộ balanceAfter theo vị trí thời gian mới
-      const reloaded = await Transaction.findById(tx._id)
+      const populated = await Transaction.findById(tx._id)
         .populate("categoryId", "name type")
         .populate("walletId", "name bankName")
         .session(session);
 
-      updatedTx = reloaded || tx;
+      updatedTx = populated || tx;
     });
 
     return updatedTx;
@@ -195,7 +172,11 @@ export async function updateTransaction(
   }
 }
 
-// Xóa giao dịch (Tự động đồng bộ lại dòng thời gian và số dư ví)
+/**
+ * XÓA GIAO DỊCH - Độ phức tạp O(1) Ghi
+ * 1. Hoàn tác số dư trên ví tương ứng O(1)
+ * 2. Xóa 1 document Transaction O(1)
+ */
 export async function deleteTransaction(
   userId: Types.ObjectId,
   transactionId: string
@@ -212,16 +193,26 @@ export async function deleteTransaction(
         throw new AppError("Không tìm thấy giao dịch", 404);
       }
 
-      const walletId = tx.walletId;
+      const delta = tx.type === "income" ? -tx.amount : tx.amount;
+      const filter: Record<string, unknown> = { _id: tx.walletId, userId };
+      if (tx.type === "income") {
+        filter.currentBalance = { $gte: tx.amount };
+      }
 
-      // Xóa giao dịch
+      const wallet = await Wallet.findOneAndUpdate(
+        filter,
+        { $inc: { currentBalance: delta } },
+        { new: true, session }
+      );
+
+      if (!wallet) {
+        throw new AppError("Không thể xóa khoản thu này vì số dư ví hiện tại không đủ để hoàn tác (sẽ bị âm tiền)", 400);
+      }
+
       await Transaction.deleteOne({ _id: transactionId, userId }).session(session);
-
-      // Đồng bộ lại toàn bộ dòng thời gian của ví sau khi xóa giao dịch này
-      await recalculateWalletTimeline(userId, walletId, session);
     });
 
-    return { success: true, message: "Đã xóa giao dịch và đồng bộ lại số dư thành công" };
+    return { success: true, message: "Đã xóa giao dịch và hoàn tác số dư thành công" };
   } finally {
     await session.endSession();
   }

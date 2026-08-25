@@ -192,7 +192,7 @@ export async function exportWalletStatementExcel(
 
   // Stream đếm giao dịch trước (Sắp xếp mới nhất đến cũ nhất)
   const cursor = Transaction.find(rangeFilter)
-    .sort({ date: -1, _id: -1 })
+    .sort({ date: 1, createdAt: 1, _id: 1 })
     .populate("categoryId", "name")
     .cursor();
 
@@ -207,10 +207,16 @@ export async function exportWalletStatementExcel(
   }> = [];
 
   let count = 1;
+  let running = openingBalance;
   for await (const doc of cursor) {
     const tx = doc as ITransaction & { categoryId: { name?: string } };
-    if (tx.type === "income") totalIncome += tx.amount;
-    else totalExpense += tx.amount;
+    if (tx.type === "income") {
+      totalIncome += tx.amount;
+      running += tx.amount;
+    } else {
+      totalExpense += tx.amount;
+      running -= tx.amount;
+    }
 
     transactionsData.push({
       stt: count++,
@@ -218,10 +224,14 @@ export async function exportWalletStatementExcel(
       type: tx.type === "income" ? "Thu" : "Chi",
       category: tx.categoryId?.name ?? "Khác",
       amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: tx.balanceAfter ?? 0,
+      balanceAfter: running,
       note: tx.note ?? "",
     });
   }
+
+  // Sắp xếp mới nhất trước khi ghi sheet
+  transactionsData.reverse();
+  transactionsData.forEach((row, i) => { row.stt = i + 1; });
 
   const closingBalance = openingBalance + totalIncome - totalExpense;
   sheet.addRow([openingBalance, totalIncome, -totalExpense, closingBalance]).commit();
@@ -337,7 +347,7 @@ export async function exportWalletStatementPdf(
 
   // Stream đếm giao dịch (Sắp xếp mới nhất đến cũ nhất)
   const cursor = Transaction.find(rangeFilter)
-    .sort({ date: -1, _id: -1 })
+    .sort({ date: 1, createdAt: 1, _id: 1 })
     .populate("categoryId", "name")
     .cursor();
 
@@ -352,10 +362,16 @@ export async function exportWalletStatementPdf(
   }> = [];
 
   let idx = 1;
+  let runningPdf = openingBalance;
   for await (const doc2 of cursor) {
     const tx = doc2 as ITransaction & { categoryId: { name?: string } };
-    if (tx.type === "income") totalIncome += tx.amount;
-    else totalExpense += tx.amount;
+    if (tx.type === "income") {
+      totalIncome += tx.amount;
+      runningPdf += tx.amount;
+    } else {
+      totalExpense += tx.amount;
+      runningPdf -= tx.amount;
+    }
 
     rows.push({
       stt: idx++,
@@ -363,10 +379,14 @@ export async function exportWalletStatementPdf(
       type: tx.type === "income" ? "Thu" : "Chi",
       category: tx.categoryId?.name ?? "Khác",
       amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: tx.balanceAfter ?? 0,
+      balanceAfter: runningPdf,
       note: tx.note ?? "",
     });
   }
+
+  // Sắp xếp mới nhất trước khi render bảng PDF
+  rows.reverse();
+  rows.forEach((r, i) => { r.stt = i + 1; });
 
   const closing = openingBalance + totalIncome - totalExpense;
   drawSummaryBox(totalIncome, totalExpense, closing);

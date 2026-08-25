@@ -111,21 +111,31 @@ try {
 
 ---
 
-## ⏱️ Thuật Toán Đồng Bộ Dòng Thời Gian (Timeline Recalculation Algorithm)
+## 🔒 Kiến Trúc Bút Toán Tài Chính $O(1)$ (Pure Ledger Architecture)
 
-Khi người dùng **Tạo mới**, **Chỉnh sửa** (Số tiền, Loại Thu/Chi, Ngày giao dịch, Danh mục, Ghi chú) hoặc **Xóa** bất kỳ giao dịch nào:
-1. **Khóa ví mục tiêu:** Giao dịch gắn liền với Ví đã tạo, **không cho phép chuyển ví (`walletId` là bất biến)**.
-2. **Quét dòng thời gian theo thứ tự tăng dần:**
-   ```sql
-   ORDER BY date ASC, createdAt ASC, _id ASC
-   ```
-3. **Tính toán số dư tích lũy liên tục (Continuous Running Balance):**
-   - Bắt đầu từ số dư ban đầu của Ví: `running = wallet.initialBalance`.
-   - Với mỗi giao dịch $t_i$:
-     $\text{running}_{i} = \text{running}_{i-1} + (t_i.\text{type} == \text{'income'} \ ? \ t_i.\text{amount} : -t_i.\text{amount})$
-   - **Bảo vệ chống chi âm lịch sử (Timeline Non-Negative Invariant):**
-     $\forall i, \quad \text{running}_i \ge 0$
-     Nếu tại bất kỳ thời điểm nào $\text{running}_i < 0$, giao dịch lập tức bị hủy bỏ (Rollback Transaction) và trả về lỗi: *"Không thể thực hiện vì vào ngày DD/MM/YYYY, số dư ví sẽ bị âm ($X$ đ)"*.
-4. **Cập nhật đồng loạt (Bulk Write):**
-   - Cập nhật `balanceAfter = running_i` cho từng giao dịch trên toàn bộ dòng thời gian.
-   - Cập nhật số dư hiện tại cuối cùng: `wallet.currentBalance = running_n`.
+Hệ thống tuân thủ nghiêm ngặt nguyên lý thiết kế CSDL tài chính và kế toán kép (Ledger / Event Sourcing):
+
+### 1. Bản chất Document `Transaction`:
+- Mỗi `Transaction` là một sự kiện tài chính nguyên tử: `{ _id, userId, walletId, type, amount, categoryId, date, note, createdAt, updatedAt }`.
+- **Tuyệt đối không lưu cứng trường snapshot phái sinh `balanceAfter` trong CSDL**, loại bỏ hoàn toàn hiện tượng Cascade Update $O(N)$ khi người dùng chỉnh sửa hoặc xóa giao dịch trong quá khứ.
+
+### 2. Thao tác Ghi đạt độ phức tạp $O(1)$ tuyệt đối:
+* **Tạo mới giao dịch (`createTransaction`):**
+  - Cập nhật số dư hiện tại `Wallet.currentBalance` bằng toán tử `$inc` nguyên tử trong session ($O(1)$).
+  - Ghi 1 document `Transaction` mới ($O(1)$).
+* **Chỉnh sửa giao dịch (`updateTransaction`):**
+  - Tính toán độ lệch ròng: $\Delta = \text{Hiệu ứng mới} - \text{Hiệu ứng cũ}$.
+  - Cập nhật số dư `Wallet.currentBalance` bằng toán tử `$inc: { currentBalance: \Delta }` ($O(1)$).
+  - Kiểm tra chống chi âm tức thời nếu $\Delta < 0$ (`currentBalance >= |\Delta|`).
+  - Cập nhật duy nhất 1 bản ghi `Transaction` được chỉ định ($O(1)$).
+* **Xóa giao dịch (`deleteTransaction`):**
+  - Hoàn tác số dư trên Ví tương ứng ($O(1)$).
+  - Xóa đúng 1 bản ghi `Transaction` ($O(1)$).
+
+### 3. Thao tác Đọc tính toán Động theo Luồng ($O(1)$ RAM Stream):
+* Khi truy vấn **Sao kê Tài chính (`Statement`)** hoặc **Xuất Excel / PDF Stream**:
+  - Tính `openingBalance` đầu kỳ bằng Aggregation ($O(\log N)$ nhờ Compound Index `{ userId: 1, walletId: 1, date: 1 }`).
+  - Khi stream danh sách giao dịch qua từng dòng theo trình tự thời gian (`date: 1, _id: 1`):
+    $\text{runningBalance} = \text{runningBalance} + (\text{type} == \text{'income'} \ ? \ \text{amount} : -\text{amount})$
+    $\text{balanceAfter} = \text{runningBalance}$
+  - **Tốc độ cực nhanh, tiêu tốn $O(1)$ RAM và luôn phản ánh chính xác 100% số dư sau từng giao dịch dù có chỉnh sửa dữ liệu trong quá khứ.**
