@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Transaction } from "../types/transaction";
-import { Wallet } from "../types/wallet";
 import { Category, CategoryType } from "../types/category";
-import { listWalletsApi } from "../api/wallet";
 import { listCategoriesApi } from "../api/category";
 import { updateTransactionApi } from "../api/transaction";
 import { useNotification } from "../contexts/NotificationContext";
-import { X, ArrowDownLeft, ArrowUpRight, Save, Check } from "lucide-react";
+import { X, ArrowDownLeft, ArrowUpRight, Save, Wallet as WalletIcon } from "lucide-react";
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -25,27 +23,24 @@ export default function EditTransactionModal({
 
   const [type, setType] = useState<CategoryType>("expense");
   const [amount, setAmount] = useState<string>("");
-  const [walletId, setWalletId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [note, setNote] = useState<string>("");
 
-  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Nạp danh sách ví và danh mục
+  // Nạp danh sách danh mục
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    Promise.all([listWalletsApi(), listCategoriesApi()])
-      .then(([walletsRes, categoriesRes]) => {
-        setWallets(walletsRes.wallets);
+    listCategoriesApi()
+      .then((categoriesRes) => {
         setCategories(categoriesRes);
       })
-      .catch((err) => {
-        showError("Không thể tải danh mục hoặc danh sách ví");
+      .catch(() => {
+        showError("Không thể tải danh mục");
       })
       .finally(() => setLoading(false));
   }, [isOpen]);
@@ -56,11 +51,6 @@ export default function EditTransactionModal({
 
     setType(transaction.type);
     setAmount(String(transaction.amount));
-
-    const wId = typeof transaction.walletId === "object" && transaction.walletId !== null
-      ? transaction.walletId._id
-      : transaction.walletId;
-    setWalletId(wId || "");
 
     const cId = typeof transaction.categoryId === "object" && transaction.categoryId !== null
       ? transaction.categoryId._id
@@ -89,15 +79,17 @@ export default function EditTransactionModal({
 
   if (!isOpen || !transaction) return null;
 
+  const walletName = typeof transaction.walletId === "object" && transaction.walletId !== null
+    ? `${transaction.walletId.name} ${transaction.walletId.bankName ? `(${transaction.walletId.bankName})` : ""}`
+    : "Ví hiện tại";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!transaction) return;
+
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
       showError("Số tiền phải lớn hơn 0");
-      return;
-    }
-    if (!walletId) {
-      showError("Vui lòng chọn ví tài khoản");
       return;
     }
     if (!categoryId) {
@@ -111,9 +103,7 @@ export default function EditTransactionModal({
 
     setSubmitting(true);
     try {
-      if (!transaction) return;
       await updateTransactionApi(transaction._id, {
-        walletId,
         type,
         amount: numAmount,
         categoryId,
@@ -121,7 +111,7 @@ export default function EditTransactionModal({
         note: note.trim() || undefined,
       });
 
-      showSuccess("Đã cập nhật giao dịch thành công!");
+      showSuccess("Đã cập nhật và đồng bộ lại dòng thời gian ví thành công!");
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -162,10 +152,16 @@ export default function EditTransactionModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-main)" }}>
-            Chỉnh sửa Giao dịch
-          </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+              Chỉnh sửa Giao dịch
+            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 12, color: "var(--text-muted)" }}>
+              <WalletIcon size={14} color="var(--primary)" />
+              <span>{walletName}</span>
+            </div>
+          </div>
           <button
             onClick={onClose}
             style={{
@@ -243,7 +239,7 @@ export default function EditTransactionModal({
               />
             </div>
 
-            {/* Danh mục & Ví (2 cột) */}
+            {/* Danh mục & Ngày giao dịch (2 cột) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
@@ -265,41 +261,22 @@ export default function EditTransactionModal({
 
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-                  Ví tài khoản *
+                  Ngày giao dịch *
                 </label>
-                <select
-                  className="form-control"
-                  value={walletId}
-                  onChange={(e) => setWalletId(e.target.value)}
+                <input
+                  type="date"
                   required
-                >
-                  {wallets.map((w) => (
-                    <option key={w._id} value={w._id}>
-                      {w.name} {w.bankName ? `(${w.bankName})` : ""}
-                    </option>
-                  ))}
-                </select>
+                  className="form-control"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
               </div>
-            </div>
-
-            {/* Ngày giao dịch */}
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-                Ngày giao dịch *
-              </label>
-              <input
-                type="date"
-                required
-                className="form-control"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
             </div>
 
             {/* Ghi chú */}
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-                Ghi chú (Tùy chọn)
+                Nội dung / Ghi chú (Tùy chọn)
               </label>
               <input
                 type="text"

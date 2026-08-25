@@ -23,7 +23,6 @@ export interface CreateTransactionPayload {
 }
 
 export interface UpdateTransactionPayload {
-  walletId?: string;
   type?: CategoryType;
   amount?: number;
   categoryId?: string;

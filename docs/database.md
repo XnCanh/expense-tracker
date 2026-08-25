@@ -111,11 +111,21 @@ try {
 
 ---
 
-## 🔒 Cơ chế Cập nhật / Xóa Giao dịch & Chống Chi Âm Toàn Diện
+## ⏱️ Thuật Toán Đồng Bộ Dòng Thời Gian (Timeline Recalculation Algorithm)
 
-Khi người dùng thực hiện sửa hoặc xóa giao dịch (kể cả các giao dịch trong quá khứ):
-1. **Thuật toán Reconcile Số dư Nguyên tử:**
-   - Khi sửa: $\Delta = \text{Hiệu ứng mới} - \text{Hiệu ứng cũ}$.
-   - Nếu $\Delta < 0$ (trừ thêm tiền từ ví): Kiểm tra $\text{currentBalance} \ge |\Delta|$ trước khi cập nhật.
-   - Khi chuyển ví: Hoàn tác số dư trên ví cũ và áp dụng số dư lên ví mới trong cùng 1 MongoDB ACID Session.
-2. **Loại bỏ phụ thuộc Snapshot cứng:** `balanceAfter` được sinh động theo dòng thời gian, đảm bảo lịch sử và sao kê luôn chính xác 100% khi có chỉnh sửa dữ liệu trong quá khứ.
+Khi người dùng **Tạo mới**, **Chỉnh sửa** (Số tiền, Loại Thu/Chi, Ngày giao dịch, Danh mục, Ghi chú) hoặc **Xóa** bất kỳ giao dịch nào:
+1. **Khóa ví mục tiêu:** Giao dịch gắn liền với Ví đã tạo, **không cho phép chuyển ví (`walletId` là bất biến)**.
+2. **Quét dòng thời gian theo thứ tự tăng dần:**
+   ```sql
+   ORDER BY date ASC, createdAt ASC, _id ASC
+   ```
+3. **Tính toán số dư tích lũy liên tục (Continuous Running Balance):**
+   - Bắt đầu từ số dư ban đầu của Ví: `running = wallet.initialBalance`.
+   - Với mỗi giao dịch $t_i$:
+     $\text{running}_{i} = \text{running}_{i-1} + (t_i.\text{type} == \text{'income'} \ ? \ t_i.\text{amount} : -t_i.\text{amount})$
+   - **Bảo vệ chống chi âm lịch sử (Timeline Non-Negative Invariant):**
+     $\forall i, \quad \text{running}_i \ge 0$
+     Nếu tại bất kỳ thời điểm nào $\text{running}_i < 0$, giao dịch lập tức bị hủy bỏ (Rollback Transaction) và trả về lỗi: *"Không thể thực hiện vì vào ngày DD/MM/YYYY, số dư ví sẽ bị âm ($X$ đ)"*.
+4. **Cập nhật đồng loạt (Bulk Write):**
+   - Cập nhật `balanceAfter = running_i` cho từng giao dịch trên toàn bộ dòng thời gian.
+   - Cập nhật số dư hiện tại cuối cùng: `wallet.currentBalance = running_n`.

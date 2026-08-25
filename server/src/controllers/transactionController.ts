@@ -19,9 +19,8 @@ const createTransactionSchema = z.object({
   note: z.string().optional(),
 });
 
-// updateTransactionSchema - Cập nhật giao dịch
+// updateTransactionSchema - Cập nhật giao dịch (Không cho phép đổi ví)
 const updateTransactionSchema = z.object({
-  walletId: z.string().min(1).optional(),
   type: z.enum(["income", "expense"]).optional(),
   amount: z.number().positive("Số tiền phải lớn hơn 0").optional(),
   categoryId: z.string().min(1).optional(),
