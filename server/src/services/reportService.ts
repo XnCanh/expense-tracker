@@ -7,23 +7,42 @@ import fs from "fs";
 import { Transaction, ITransaction } from "../models/Transaction";
 import { IWallet } from "../models/Wallet";
 import { getWalletOrThrow } from "./walletService";
+import { buildDateFilter, formatDateVn, formatVnd } from "../utils/dateRange";
 
-// Hàm hỗ trợ định dạng ngày tháng chuẩn Việt Nam (DD/MM/YYYY)
-function formatDateVn(date: Date | string): string {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+/**
+ * TÍNH TỔNG THU / TỔNG CHI ĐƠN LƯỢT BẰNG TOÁN TỬ $cond TRONG MONGODB AGGREGATION
+ */
+export async function getTransactionSummary(
+  filter: Record<string, unknown>
+): Promise<{ totalIncome: number; totalExpense: number }> {
+  const [result] = await Transaction.aggregate<{
+    totalIncome: number;
+    totalExpense: number;
+  }>([
+    { $match: filter },
+    {
+      $group: {
+        _id: null,
+        totalIncome: {
+          $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
+        },
+        totalExpense: {
+          $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
+        },
+      },
+    },
+  ]);
+
+  return {
+    totalIncome: result?.totalIncome ?? 0,
+    totalExpense: result?.totalExpense ?? 0,
+  };
 }
 
-// Hàm hỗ trợ định dạng tiền tệ VNĐ
-function formatVnd(amount: number): string {
-  return amount.toLocaleString("vi-VN") + " đ";
-}
-
-// Tính toán chính xác số dư đầu kỳ theo thời gian
-async function computeOpeningBalance(
+/**
+ * Tính toán số dư đầu kỳ (Opening Balance) chuẩn xác theo mốc thời gian
+ */
+export async function computeOpeningBalance(
   userId: Types.ObjectId,
   wallet: IWallet,
   from?: Date
@@ -32,40 +51,31 @@ async function computeOpeningBalance(
     return wallet.initialBalance;
   }
 
-  const prevTotals = await Transaction.aggregate<{ _id: "income" | "expense"; total: number }>([
-    {
-      $match: {
-        userId,
-        walletId: wallet._id,
-        date: { $gte: wallet.startDate, $lt: from },
-      },
-    },
-    { $group: { _id: "$type", total: { $sum: "$amount" } } },
-  ]);
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
 
-  const prevIncome = prevTotals.find((t) => t._id === "income")?.total ?? 0;
-  const prevExpense = prevTotals.find((t) => t._id === "expense")?.total ?? 0;
-  return wallet.initialBalance + prevIncome - prevExpense;
+  const prevFilter = {
+    userId,
+    walletId: wallet._id,
+    date: { $gte: wallet.startDate, $lt: start },
+  };
+
+  const { totalIncome, totalExpense } = await getTransactionSummary(prevFilter);
+  return wallet.initialBalance + totalIncome - totalExpense;
 }
 
-// Xây dựng bộ lọc khoảng thời gian truy vấn
+// Xây dựng bộ lọc khoảng thời gian theo chuẩn thống nhất
 function buildRangeFilter(
   userId: Types.ObjectId,
   walletId: Types.ObjectId,
   from?: Date,
   to?: Date
-) {
-  const dateFilter: Record<string, unknown> = {};
-  if (from) dateFilter.$gte = from;
-  if (to) {
-    const endOfDay = new Date(to);
-    endOfDay.setHours(23, 59, 59, 999);
-    dateFilter.$lte = endOfDay;
-  }
+): Record<string, unknown> {
+  const dateFilter = buildDateFilter(from, to);
   return {
     userId,
     walletId,
-    ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
+    ...(dateFilter ? { date: dateFilter } : {}),
   };
 }
 
@@ -77,16 +87,30 @@ export interface StatementQuery {
   limit?: number;
 }
 
+export interface StatementTransactionItem {
+  _id: string;
+  type: "income" | "expense";
+  amount: number;
+  date: Date;
+  note?: string;
+  categoryId: { _id: string; name: string; type: string };
+  balanceAfter: number;
+}
+
 export interface StatementResult {
-  wallet: { id: string; name: string };
-  from: Date | null;
-  to: Date | null;
+  wallet: {
+    _id: string;
+    name: string;
+    bankName?: string;
+    accountNumber?: string;
+  };
+  period: { from?: Date; to?: Date };
   openingBalance: number;
   totalIncome: number;
   totalExpense: number;
   closingBalance: number;
   transactions: {
-    items: ITransaction[];
+    items: StatementTransactionItem[];
     total: number;
     page: number;
     limit: number;
@@ -94,7 +118,10 @@ export interface StatementResult {
   };
 }
 
-// Lấy dữ liệu sao kê chi tiết dạng JSON (Sắp xếp từ MỚI NHẤT đến CŨ NHẤT)
+/**
+ * LẤY SAO KÊ TÀI CHÍNH KÈM SỐ DƯ LŨY KẾ ĐỘNG CHO TỪNG GIAO DỊCH (balanceAfter)
+ * Tính toán on-the-fly theo phân trang, không cần lưu cứng vào CSDL, không tốn RAM.
+ */
 export async function getWalletStatement(
   userId: Types.ObjectId,
   query: StatementQuery
@@ -103,35 +130,79 @@ export async function getWalletStatement(
   const openingBalance = await computeOpeningBalance(userId, wallet, query.from);
   const rangeFilter = buildRangeFilter(userId, wallet._id, query.from, query.to);
 
-  const totals = await Transaction.aggregate<{ _id: "income" | "expense"; total: number }>([
-    { $match: rangeFilter },
-    { $group: { _id: "$type", total: { $sum: "$amount" } } },
-  ]);
-  const totalIncome = totals.find((t) => t._id === "income")?.total ?? 0;
-  const totalExpense = totals.find((t) => t._id === "expense")?.total ?? 0;
+  // 1. Tính tổng thu, tổng chi và số dư cuối kỳ trong 1 lượt aggregate
+  const { totalIncome, totalExpense } = await getTransactionSummary(rangeFilter);
   const closingBalance = openingBalance + totalIncome - totalExpense;
 
   const page = query.page && query.page > 0 ? query.page : 1;
   const limit = query.limit && query.limit > 0 && query.limit <= 200 ? query.limit : 50;
+  const skip = (page - 1) * limit;
 
-  const [items, total] = await Promise.all([
+  // 2. Tính số dư mốc trước trang hiện tại (nếu page > 1) bằng cách quét nhanh skip records
+  let pageStartingBalance = closingBalance;
+  if (skip > 0) {
+    const prevItems = await Transaction.find(rangeFilter)
+      .sort({ date: -1, createdAt: -1, _id: -1 })
+      .limit(skip)
+      .select("type amount");
+    for (const item of prevItems) {
+      if (item.type === "income") {
+        pageStartingBalance -= item.amount;
+      } else {
+        pageStartingBalance += item.amount;
+      }
+    }
+  }
+
+  // 3. Lấy danh sách giao dịch cho trang hiện tại
+  const [docs, total] = await Promise.all([
     Transaction.find(rangeFilter)
-      .sort({ date: -1, _id: -1 })
-      .skip((page - 1) * limit)
+      .sort({ date: -1, createdAt: -1, _id: -1 })
+      .skip(skip)
       .limit(limit)
       .populate("categoryId", "name type"),
     Transaction.countDocuments(rangeFilter),
   ]);
 
+  let running = pageStartingBalance;
+  const items: StatementTransactionItem[] = docs.map((doc) => {
+    const tx = doc.toObject();
+    const currentBalanceAfter = running;
+    if (tx.type === "income") {
+      running -= tx.amount;
+    } else {
+      running += tx.amount;
+    }
+    return {
+      _id: tx._id.toString(),
+      type: tx.type,
+      amount: tx.amount,
+      date: tx.date,
+      note: tx.note,
+      categoryId: tx.categoryId as any,
+      balanceAfter: currentBalanceAfter,
+    };
+  });
+
   return {
-    wallet: { id: wallet._id.toString(), name: wallet.name },
-    from: query.from ?? null,
-    to: query.to ?? null,
+    wallet: {
+      _id: wallet._id.toString(),
+      name: wallet.name,
+      bankName: wallet.bankName,
+      accountNumber: wallet.accountNumber,
+    },
+    period: { from: query.from, to: query.to },
     openingBalance,
     totalIncome,
     totalExpense,
     closingBalance,
-    transactions: { items, total, page, limit, totalPages: Math.ceil(total / limit) },
+    transactions: {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
   };
 }
 
@@ -141,7 +212,11 @@ export interface ExportStatementQuery {
   to?: Date;
 }
 
-// Xuất báo cáo sao kê ra file Excel (Kiến trúc Stream, tiêu thụ RAM tối thiểu O(1))
+/**
+ * XUẤT BÁO CÁO SAO KÊ EXCEL DẠNG TRUE STREAMING $O(1)$ RAM
+ * Tính toán balanceAfter lùi từ closingBalance và ghi trực tiếp ra HTTP stream qua WorkbookWriter.
+ * Tuyệt đối không giữ mảng dữ liệu trong RAM.
+ */
 export async function exportWalletStatementExcel(
   res: Response,
   userId: Types.ObjectId,
@@ -150,6 +225,10 @@ export async function exportWalletStatementExcel(
   const wallet = await getWalletOrThrow(userId, query.walletId);
   const openingBalance = await computeOpeningBalance(userId, wallet, query.from);
   const rangeFilter = buildRangeFilter(userId, wallet._id, query.from, query.to);
+
+  // 1. Tính tổng thu, chi và số dư cuối kỳ
+  const { totalIncome, totalExpense } = await getTransactionSummary(rangeFilter);
+  const closingBalance = openingBalance + totalIncome - totalExpense;
 
   const fromDateStr = formatDateVn(query.from ? query.from : wallet.startDate);
   const toDateStr = formatDateVn(query.to ? query.to : new Date());
@@ -163,104 +242,103 @@ export async function exportWalletStatementExcel(
     `attachment; filename="sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.xlsx"; filename*=UTF-8''sao-ke-${encodeURIComponent(wallet.name.replace(/\s+/g, "-"))}.xlsx`
   );
 
-  const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res });
-  const sheet = workbook.addWorksheet("Sao Kê Chi Tiết");
+  // Khởi tạo WorkbookWriter True Streaming
+  const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+    stream: res,
+    useStyles: true,
+    useSharedStrings: true,
+  });
 
-  // Thiết lập độ rộng cột chuẩn
-  sheet.columns = [
-    { key: "stt", width: 8 },
-    { key: "date", width: 16 },
-    { key: "type", width: 12 },
-    { key: "category", width: 25 },
-    { key: "amount", width: 20 },
-    { key: "balanceAfter", width: 22 },
-    { key: "note", width: 35 },
+  const worksheet = workbook.addWorksheet("Sao Kê Chi Tiết");
+
+  // Cấu hình độ rộng cột
+  worksheet.columns = [
+    { header: "", key: "stt", width: 8 },
+    { header: "", key: "date", width: 16 },
+    { header: "", key: "type", width: 14 },
+    { header: "", key: "category", width: 24 },
+    { header: "", key: "amount", width: 22 },
+    { header: "", key: "balanceAfter", width: 22 },
+    { header: "", key: "note", width: 35 },
   ];
 
-  // Tiêu đề báo cáo
-  sheet.addRow(["BÁO CÁO SAO KÊ TÀI CHÍNH"]).commit();
-  sheet.addRow([`Ví tài khoản: ${wallet.name}${wallet.bankName ? " (" + wallet.bankName + ")" : ""} | STK: ${wallet.accountNumber || "Tiền mặt"}`]).commit();
-  sheet.addRow([`Kỳ sao kê: Từ ngày ${fromDateStr} đến ngày ${toDateStr} | Ngày xuất: ${formatDateVn(new Date())}`]).commit();
-  sheet.addRow([]).commit();
+  // KHỐI 1: HEADER
+  const titleRow = worksheet.addRow(["", "BẢNG SAO KÊ CHI TIẾT TÀI KHOẢN"]);
+  titleRow.font = { name: "Arial", size: 16, bold: true, color: { argb: "FF0A58CA" } };
+  worksheet.addRow([]);
 
-  // Khối tổng quan số dư
-  sheet.addRow(["TỔNG QUAN TÀI CHÍNH KỲ NÀY"]).commit();
-  sheet.addRow(["Số dư đầu kỳ", "Tổng Thu (+)", "Tổng Chi (-)", "Số dư cuối kỳ"]).commit();
+  worksheet.addRow(["", "Chủ tài khoản:", wallet.name]);
+  worksheet.addRow(["", "Ngân hàng:", wallet.bankName ? `${wallet.bankName} - STK: ${wallet.accountNumber || "N/A"}` : "Tiền mặt"]);
+  worksheet.addRow(["", "Kỳ sao kê:", `Từ ${fromDateStr} đến ${toDateStr}`]);
+  worksheet.addRow([]);
 
-  let totalIncome = 0;
-  let totalExpense = 0;
+  // KHỐI 2: SUMMARY CARD
+  worksheet.addRow(["", "TỔNG HỢP BIẾN ĐỘNG SỐ DƯ KỲ NÀY"]);
+  worksheet.addRow(["", "Số dư đầu kỳ:", openingBalance]);
+  worksheet.addRow(["", "Tổng tiền thu (+):", totalIncome]);
+  worksheet.addRow(["", "Tổng tiền chi (-):", totalExpense]);
+  worksheet.addRow(["", "Số dư cuối kỳ:", closingBalance]);
+  worksheet.addRow([]);
 
-  // Stream đếm giao dịch trước (Sắp xếp mới nhất đến cũ nhất)
+  // KHỐI 3: TIÊU ĐỀ BẢNG DỮ LIỆU
+  const headerRow = worksheet.addRow(["STT", "Ngày GD", "Loại GD", "Danh mục", "Số tiền (VNĐ)", "Số dư sau GD (VNĐ)", "Ghi chú"]);
+  headerRow.font = { name: "Arial", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  // KHỐI 4: STREAM DỮ LIỆU TỪ CURSOR (O(1) RAM - GHI TRỰC TIẾP RA STREAM)
   const cursor = Transaction.find(rangeFilter)
-    .sort({ date: 1, createdAt: 1, _id: 1 })
+    .sort({ date: -1, createdAt: -1, _id: -1 })
     .populate("categoryId", "name")
     .cursor();
 
-  const transactionsData: Array<{
-    stt: number;
-    date: string;
-    type: string;
-    category: string;
-    amount: number;
-    balanceAfter: number;
-    note: string;
-  }> = [];
+  let stt = 1;
+  let running = closingBalance;
 
-  let count = 1;
-  let running = openingBalance;
   for await (const doc of cursor) {
     const tx = doc as ITransaction & { categoryId: { name?: string } };
-    if (tx.type === "income") {
-      totalIncome += tx.amount;
-      running += tx.amount;
-    } else {
-      totalExpense += tx.amount;
+    const isIncome = tx.type === "income";
+    const currentBalanceAfter = running;
+
+    if (isIncome) {
       running -= tx.amount;
+    } else {
+      running += tx.amount;
     }
 
-    transactionsData.push({
-      stt: count++,
-      date: formatDateVn(tx.date),
-      type: tx.type === "income" ? "Thu" : "Chi",
-      category: tx.categoryId?.name ?? "Khác",
-      amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: running,
-      note: tx.note ?? "",
-    });
+    const dataRow = worksheet.addRow([
+      stt++,
+      formatDateVn(tx.date),
+      isIncome ? "Thu (+)" : "Chi (-)",
+      tx.categoryId?.name ?? "Khác",
+      isIncome ? tx.amount : -tx.amount,
+      currentBalanceAfter,
+      tx.note ?? "",
+    ]);
+
+    dataRow.getCell(1).alignment = { horizontal: "center" };
+    dataRow.getCell(2).alignment = { horizontal: "center" };
+    dataRow.getCell(3).alignment = { horizontal: "center" };
+    dataRow.getCell(3).font = { bold: true, color: { argb: isIncome ? "FF16A34A" : "FFDC2626" } };
+    dataRow.getCell(5).numFmt = '#,##0 "₫"';
+    dataRow.getCell(5).font = { bold: true, color: { argb: isIncome ? "FF16A34A" : "FFDC2626" } };
+    dataRow.getCell(6).numFmt = '#,##0 "₫"';
+    dataRow.getCell(6).font = { bold: true, color: { argb: "FF334155" } };
+
+    dataRow.commit();
   }
 
-  // Sắp xếp mới nhất trước khi ghi sheet
-  transactionsData.reverse();
-  transactionsData.forEach((row, i) => { row.stt = i + 1; });
+  worksheet.addRow([]);
+  worksheet.addRow(["", `Báo cáo được trích xuất tự động vào lúc: ${new Date().toLocaleString("vi-VN")}`]);
 
-  const closingBalance = openingBalance + totalIncome - totalExpense;
-  sheet.addRow([openingBalance, totalIncome, -totalExpense, closingBalance]).commit();
-  sheet.addRow([]).commit();
-
-  // Bảng chi tiết giao dịch
-  sheet.addRow(["CHI TIẾT CÁC GIAO DỊCH PHÁT SINH"]).commit();
-  sheet.addRow(["STT", "Ngày", "Loại", "Danh mục", "Số tiền (VNĐ)", "Số dư sau GD (VNĐ)", "Ghi chú"]).commit();
-
-  for (const row of transactionsData) {
-    sheet.addRow([
-      row.stt,
-      row.date,
-      row.type,
-      row.category,
-      row.amount,
-      row.balanceAfter,
-      row.note,
-    ]).commit();
-  }
-
-  sheet.addRow([]).commit();
-  sheet.addRow(["", "", "", "TỔNG KẾT", totalIncome - totalExpense, closingBalance, `Tổng số: ${transactionsData.length} giao dịch`]).commit();
-
-  await sheet.commit();
   await workbook.commit();
 }
 
-// Xuất báo cáo sao kê ra file PDF (Hỗ trợ 100% Font Unicode Tiếng Việt, căn lề chuẩn A4)
+/**
+ * XUẤT BÁO CÁO SAO KÊ PDF DẠNG TRUE STREAMING UNICODE
+ */
 export async function exportWalletStatementPdf(
   res: Response,
   userId: Types.ObjectId,
@@ -269,6 +347,9 @@ export async function exportWalletStatementPdf(
   const wallet = await getWalletOrThrow(userId, query.walletId);
   const openingBalance = await computeOpeningBalance(userId, wallet, query.from);
   const rangeFilter = buildRangeFilter(userId, wallet._id, query.from, query.to);
+
+  const { totalIncome, totalExpense } = await getTransactionSummary(rangeFilter);
+  const closingBalance = openingBalance + totalIncome - totalExpense;
 
   const fromDateStr = formatDateVn(query.from ? query.from : wallet.startDate);
   const toDateStr = formatDateVn(query.to ? query.to : new Date());
@@ -282,145 +363,99 @@ export async function exportWalletStatementPdf(
   const doc = new PDFDocument({ margin: 36, size: "A4" });
   doc.pipe(res);
 
-  // Đăng ký Font Unicode Tiếng Việt
-  const fontRegular = path.resolve(__dirname, "../assets/fonts/Arial.ttf");
-  const fontBold = path.resolve(__dirname, "../assets/fonts/Arial-Bold.ttf");
-
-  if (fs.existsSync(fontRegular)) {
-    doc.registerFont("VN", fontRegular);
-    doc.font("VN");
+  // Đăng ký Font Unicode
+  const regularFont = path.join(__dirname, "../assets/fonts/Arial.ttf");
+  const boldFont = path.join(__dirname, "../assets/fonts/Arial-Bold.ttf");
+  if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+    doc.registerFont("Main", regularFont);
+    doc.registerFont("Main-Bold", boldFont);
+  } else {
+    doc.registerFont("Main", "Helvetica");
+    doc.registerFont("Main-Bold", "Helvetica-Bold");
   }
-  if (fs.existsSync(fontBold)) {
-    doc.registerFont("VN-Bold", fontBold);
-  }
 
-  const useBold = fs.existsSync(fontBold) ? "VN-Bold" : "Helvetica-Bold";
-  const useRegular = fs.existsSync(fontRegular) ? "VN" : "Helvetica";
+  doc.font("Main-Bold").fontSize(18).fillColor("#0a58ca").text("BẢNG SAO KÊ CHI TIẾT TÀI KHOẢN", { align: "center" });
+  doc.moveDown(0.5);
 
-  // Tiêu đề chính
-  doc.font(useBold).fontSize(18).fillColor("#1877f2").text("BÁO CÁO SAO KÊ TÀI CHÍNH", { align: "left" });
-  doc.font(useRegular).fontSize(10).fillColor("#555").text(
-    `Ví: ${wallet.name}${wallet.bankName ? " (" + wallet.bankName + ")" : ""} | STK: ${wallet.accountNumber || "Tiền mặt"} | Kỳ sao kê: Từ ngày ${fromDateStr} đến ngày ${toDateStr}`
-  );
+  doc.font("Main").fontSize(10).fillColor("#334155");
+  doc.text(`Chủ tài khoản: ${wallet.name}`);
+  doc.text(`Tài khoản: ${wallet.bankName ? `${wallet.bankName} - STK: ${wallet.accountNumber || "N/A"}` : "Tiền mặt"}`);
+  doc.text(`Kỳ sao kê: Từ ${fromDateStr} đến ${toDateStr}`);
   doc.moveDown(0.8);
 
-  // Tọa độ các cột chuẩn (Tổng chiều rộng trang A4 trừ lề = 523pt)
-  // STT: 36..61, Ngày: 65..130, Loại: 135..165, Danh mục: 170..280, Số tiền: 285..370, Số dư: 375..460, Ghi chú: 465..559
-  const col = {
-    stt: { x: 36, w: 25 },
-    date: { x: 65, w: 65 },
-    type: { x: 135, w: 30 },
-    cat: { x: 170, w: 110 },
-    amt: { x: 285, w: 85 },
-    bal: { x: 375, w: 85 },
-    note: { x: 465, w: 94 }
-  };
-  const pageBottom = doc.page.height - doc.page.margins.bottom;
+  // Khối tổng kết
+  doc.font("Main-Bold").fontSize(11).fillColor("#0f172a").text("TỔNG HỢP BIẾN ĐỘNG SỐ DƯ");
+  doc.font("Main").fontSize(10).fillColor("#334155");
+  doc.text(`• Số dư đầu kỳ: ${formatVnd(openingBalance)}`);
+  doc.fillColor("#16a34a").text(`• Tổng tiền thu (+): ${formatVnd(totalIncome)}`);
+  doc.fillColor("#dc2626").text(`• Tổng tiền chi (-): ${formatVnd(totalExpense)}`);
+  doc.font("Main-Bold").fillColor("#0f172a").text(`• Số dư cuối kỳ: ${formatVnd(closingBalance)}`);
+  doc.moveDown(1);
 
-  function drawSummaryBox(inc: number, exp: number, closeBal: number) {
-    doc.font(useBold).fontSize(11).fillColor("#000").text("TỔNG QUAN TÀI CHÍNH KỲ NÀY");
-    doc.font(useRegular).fontSize(10).fillColor("#333");
-    doc.text(`• Số dư đầu kỳ: ${formatVnd(openingBalance)}`);
-    doc.text(`• Tổng Thu: +${formatVnd(inc)}`);
-    doc.text(`• Tổng Chi: -${formatVnd(exp)}`);
-    doc.text(`• Số dư cuối kỳ: ${formatVnd(closeBal)}`);
-    doc.moveDown(0.8);
-  }
+  // Tiêu đề bảng
+  const startX = 36;
+  let currentY = doc.y;
 
-  function drawTableHeader() {
-    doc.font(useBold).fontSize(9).fillColor("#000");
-    const y = doc.y;
-    doc.text("STT", col.stt.x, y, { width: col.stt.w, align: "center" });
-    doc.text("Ngày", col.date.x, y, { width: col.date.w, align: "center" });
-    doc.text("Loại", col.type.x, y, { width: col.type.w, align: "center" });
-    doc.text("Danh mục", col.cat.x, y, { width: col.cat.w, align: "left" });
-    doc.text("Số tiền", col.amt.x, y, { width: col.amt.w, align: "right" });
-    doc.text("Số dư sau", col.bal.x, y, { width: col.bal.w, align: "right" });
-    doc.text("Ghi chú", col.note.x, y, { width: col.note.w, align: "left" });
-    doc.moveDown(0.4);
-    doc.moveTo(36, doc.y).lineTo(559, doc.y).strokeColor("#cbd5e1").stroke();
-    doc.moveDown(0.4);
-  }
+  doc.rect(startX, currentY, 523, 20).fill("#1e293b");
+  doc.font("Main-Bold").fontSize(9).fillColor("#ffffff");
+  doc.text("STT", startX + 5, currentY + 5, { width: 25, align: "center" });
+  doc.text("Ngày GD", startX + 32, currentY + 5, { width: 60, align: "center" });
+  doc.text("Loại", startX + 94, currentY + 5, { width: 40, align: "center" });
+  doc.text("Danh mục", startX + 136, currentY + 5, { width: 95 });
+  doc.text("Số tiền (VNĐ)", startX + 233, currentY + 5, { width: 85, align: "right" });
+  doc.text("Số dư sau GD", startX + 320, currentY + 5, { width: 85, align: "right" });
+  doc.text("Ghi chú", startX + 410, currentY + 5, { width: 110 });
 
-  let totalIncome = 0;
-  let totalExpense = 0;
+  currentY += 22;
 
-  // Stream đếm giao dịch (Sắp xếp mới nhất đến cũ nhất)
   const cursor = Transaction.find(rangeFilter)
-    .sort({ date: 1, createdAt: 1, _id: 1 })
+    .sort({ date: -1, createdAt: -1, _id: -1 })
     .populate("categoryId", "name")
     .cursor();
 
-  const rows: Array<{
-    stt: number;
-    date: string;
-    type: string;
-    category: string;
-    amount: number;
-    balanceAfter: number;
-    note: string;
-  }> = [];
+  let count = 1;
+  let runningPdf = closingBalance;
 
-  let idx = 1;
-  let runningPdf = openingBalance;
   for await (const doc2 of cursor) {
     const tx = doc2 as ITransaction & { categoryId: { name?: string } };
-    if (tx.type === "income") {
-      totalIncome += tx.amount;
-      runningPdf += tx.amount;
-    } else {
-      totalExpense += tx.amount;
+    const isIncome = tx.type === "income";
+    const currentBalanceAfter = runningPdf;
+
+    if (isIncome) {
       runningPdf -= tx.amount;
+    } else {
+      runningPdf += tx.amount;
     }
 
-    rows.push({
-      stt: idx++,
-      date: formatDateVn(tx.date),
-      type: tx.type === "income" ? "Thu" : "Chi",
-      category: tx.categoryId?.name ?? "Khác",
-      amount: tx.type === "income" ? tx.amount : -tx.amount,
-      balanceAfter: runningPdf,
-      note: tx.note ?? "",
-    });
-  }
-
-  // Sắp xếp mới nhất trước khi render bảng PDF
-  rows.reverse();
-  rows.forEach((r, i) => { r.stt = i + 1; });
-
-  const closing = openingBalance + totalIncome - totalExpense;
-  drawSummaryBox(totalIncome, totalExpense, closing);
-
-  doc.font(useBold).fontSize(11).fillColor("#000").text(`CHI TIẾT GIAO DỊCH (${rows.length} phát sinh - Mới nhất đến cũ nhất)`);
-  doc.moveDown(0.4);
-  drawTableHeader();
-
-  for (const row of rows) {
-    if (doc.y > pageBottom - 24) {
+    if (currentY > 750) {
       doc.addPage();
-      drawTableHeader();
+      currentY = 36;
     }
 
-    const rowY = doc.y;
-    doc.font(useRegular).fontSize(9).fillColor("#333");
-    doc.text(String(row.stt), col.stt.x, rowY, { width: col.stt.w, align: "center" });
-    doc.text(row.date, col.date.x, rowY, { width: col.date.w, align: "center" });
-    doc.text(row.type, col.type.x, rowY, { width: col.type.w, align: "center" });
-    doc.text(row.category, col.cat.x, rowY, { width: col.cat.w, align: "left" });
+    if (count % 2 === 0) {
+      doc.rect(startX, currentY - 2, 523, 16).fill("#f8fafc");
+    }
 
-    doc.fillColor(row.amount >= 0 ? "#16a34a" : "#dc2626");
-    doc.text(
-      `${row.amount >= 0 ? "+" : ""}${formatVnd(row.amount)}`,
-      col.amt.x,
-      rowY,
-      { width: col.amt.w, align: "right" }
-    );
+    doc.font("Main").fontSize(8).fillColor("#334155");
+    doc.text(String(count++), startX + 5, currentY, { width: 25, align: "center" });
+    doc.text(formatDateVn(tx.date), startX + 32, currentY, { width: 60, align: "center" });
 
-    doc.fillColor("#333");
-    doc.text(formatVnd(row.balanceAfter), col.bal.x, rowY, { width: col.bal.w, align: "right" });
-    doc.text(row.note, col.note.x, rowY, { width: col.note.w, align: "left" });
-    
-    doc.y = rowY + 16; // Tự động dời dòng tiếp theo cách 16pt, không bao giờ bị đè chữ
+    doc.font("Main-Bold").fillColor(isIncome ? "#16a34a" : "#dc2626");
+    doc.text(isIncome ? "Thu" : "Chi", startX + 94, currentY, { width: 40, align: "center" });
+
+    doc.font("Main").fillColor("#334155");
+    doc.text(tx.categoryId?.name ?? "Khác", startX + 136, currentY, { width: 95 });
+
+    doc.font("Main-Bold").fillColor(isIncome ? "#16a34a" : "#dc2626");
+    doc.text((isIncome ? "+" : "-") + formatVnd(tx.amount), startX + 233, currentY, { width: 85, align: "right" });
+
+    doc.font("Main").fillColor("#334155");
+    doc.text(formatVnd(currentBalanceAfter), startX + 320, currentY, { width: 85, align: "right" });
+
+    doc.font("Main").fillColor("#64748b");
+    doc.text(tx.note ?? "", startX + 410, currentY, { width: 110, height: 14, ellipsis: true });
+
+    currentY += 16;
   }
 
   doc.end();

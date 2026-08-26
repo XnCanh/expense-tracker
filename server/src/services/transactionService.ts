@@ -3,6 +3,7 @@ import { Transaction, ITransaction, TransactionType } from "../models/Transactio
 import { Wallet } from "../models/Wallet";
 import { AppError } from "../middlewares/errorHandler";
 import { getValidCategoryOrThrow } from "./categoryService";
+import { buildDateFilter } from "../utils/dateRange";
 
 // Interface cho input tạo giao dịch
 export interface CreateTransactionInput {
@@ -234,10 +235,9 @@ export async function listTransactions(userId: Types.ObjectId, query: ListTransa
     if (!Types.ObjectId.isValid(query.walletId)) throw new AppError("ID ví không hợp lệ", 400);
     filter.walletId = query.walletId;
   }
-  if (query.from || query.to) {
-    filter.date = {};
-    if (query.from) (filter.date as Record<string, Date>).$gte = query.from;
-    if (query.to) (filter.date as Record<string, Date>).$lte = query.to;
+  const dateFilter = buildDateFilter(query.from, query.to);
+  if (dateFilter) {
+    filter.date = dateFilter;
   }
 
   const page = query.page && query.page > 0 ? query.page : 1;

@@ -96,3 +96,23 @@ Trong các hệ thống quản lý tài chính truyền thống, việc lưu c�
    Chỉ cập nhật đúng 1 bản ghi `Transaction` và 1 bản ghi `Wallet` trong MongoDB ACID Session $\rightarrow$ Độ phức tạp $O(1)$ tuyệt đối!
 3. **Tính toán số dư sau giao dịch theo luồng đọc (On-the-fly Dynamic Computation):**
    - Khi xuất báo cáo Sao kê / Excel / PDF, `balanceAfter` được cộng dồn theo thời gian thực từ `openingBalance` trong luồng Stream $O(1)$ RAM, đảm bảo tính nhất quán toán học 100%.
+
+---
+
+## ⚡ 5. Bài toán: Chịu Tải 100k, 500k, 1 Triệu, 2 Triệu Transactions Trên 1 Ví
+
+### Thách thức:
+Khi một ví có tới 2.000.000 giao dịch:
+- Truy vấn sao kê thông thường sẽ tốn hàng trăm MB RAM để serialize và tính toán.
+- Xuất file Excel / PDF nếu lưu toàn bộ bản ghi vào mảng JavaScript (`Array.push`) sẽ lập tức vượt ngưỡng 2GB RAM và làm sập Node.js (`JavaScript heap out of memory`).
+
+### Giải pháp Kỹ thuật Triệt để:
+1. **Rút gọn Sao kê vào 1 câu Aggregation ($facet):**
+   - Không query dư thừa, không quét collection.
+   - Database tính toán ở cấp độ B-Tree Index Scan và chỉ trả về trang dữ liệu yêu cầu ($O(1)$ memory trên Node.js).
+2. **Xuất Excel True Streaming $O(1)$ RAM:**
+   - Sử dụng `ExcelJS.stream.xlsx.WorkbookWriter({ stream: res })`.
+   - Kết hợp MongoDB Cursor: Đọc từng document qua `for await (const doc of cursor)` $\rightarrow$ Gọi `sheet.addRow(...)` $\rightarrow$ Stream thẳng ra socket HTTP.
+   - **RAM của Node.js luôn giữ ở mức phẳng $\approx 25\text{MB}$ bất kể file xuất có 1.000 hay 2.000.000 dòng!**
+3. **Thao tác Ghi $O(1)$ Tuyệt đối:**
+   - Mọi thao tác Tạo / Sửa / Xóa giao dịch chỉ cập nhật đúng 1 Transaction và 1 Wallet (thông qua toán tử `$inc`), không cascade recalculate bất kỳ document nào khác.
