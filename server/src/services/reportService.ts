@@ -201,26 +201,28 @@ export async function getWalletStatement(
             },
           },
         ],
-        // Nhánh 2: Tính tổng thu/chi của các giao dịch trước trang hiện tại (nếu skip > 0)
-        skipSummary: [
-          ...(fromDate ? [{ $match: { date: { $gte: fromDate } } }] : []),
-          { $sort: { date: -1, createdAt: -1, _id: -1 } },
-          ...(skip > 0 ? [{ $limit: skip }] : [{ $limit: 0 }]),
-          {
-            $group: {
-              _id: null,
-              skipNet: {
-                $sum: {
-                  $cond: [
-                    { $eq: ["$type", "income"] },
-                    "$amount",
-                    { $multiply: ["$amount", -1] },
-                  ],
+        // Nhánh 2: Tính tổng thu/chi của các giao dịch trước trang hiện tại (chỉ thực thi khi skip > 0)
+        skipSummary: skip > 0
+          ? [
+              ...(fromDate ? [{ $match: { date: { $gte: fromDate } } }] : []),
+              { $sort: { date: -1, createdAt: -1, _id: -1 } },
+              { $limit: skip },
+              {
+                $group: {
+                  _id: null,
+                  skipNet: {
+                    $sum: {
+                      $cond: [
+                        { $eq: ["$type", "income"] },
+                        "$amount",
+                        { $multiply: ["$amount", -1] },
+                      ],
+                    },
+                  },
                 },
               },
-            },
-          },
-        ],
+            ]
+          : [{ $match: { _id: null } }],
         // Nhánh 3: Lấy dữ liệu phân trang và $lookup danh mục (Paginated Items)
         paginatedItems: [
           ...(fromDate ? [{ $match: { date: { $gte: fromDate } } }] : []),
